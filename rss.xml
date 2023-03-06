@@ -4,7 +4,7 @@
         <title></title>
         <link>undefined</link>
         <description>undefined</description>
-        <lastBuildDate>Mon, 06 Mar 2023 17:13:27 GMT</lastBuildDate>
+        <lastBuildDate>Mon, 06 Mar 2023 17:14:21 GMT</lastBuildDate>
         <docs>https://validator.w3.org/feed/docs/rss2.html</docs>
         <generator>Joplin Pages Publisher</generator>
         <item>
@@ -487,7 +487,7 @@ f450f84717bc3962ad83162be66f6b73</p>
 ]]></content:encoded>
         </item>
         <item>
-            <title><![CDATA[Ambassador]]></title>
+            <title><![CDATA[HTB Ambassador]]></title>
             <guid>aa7840ad61a7424ba3d9a32bbbec24d7</guid>
             <pubDate>Mon, 27 Feb 2023 16:30:30 GMT</pubDate>
             <content:encoded><![CDATA[<p>We start with a scan:<br />
