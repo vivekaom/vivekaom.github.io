@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+<link rel="stylesheet" href="/_assets/main.css" />
+
+    <title>Netmon Challenge HTB - HTB Writeups</title>
+  </head>
+  <body>
+    <div class="main">
+      <nav class="navigation">
+        <a href="/">HTB Writeups</a>
+      </nav>
+      <article>
+        <header>
+          <h1 class="article-title">Netmon Challenge HTB</h1>
+          <div class="article-info">
+            <div>
+              <span
+                >Created At：<time datetime="1678481941238"
+                  >2023-03-10 15:59</time
+                ></span
+              >
+              <span
+                >Updated At：<time datetime="1678484882819"
+                  >2023-03-10 16:48</time
+                ></span
+              >
+            </div>
+            
+          </div>
+        </header>
+        <div class="article-content markdown-body"><p>We start with an nmap scan:<br />
+nmap -Pn -sC -sV -oA nmap/initial 10.10.10.152<br />
+<img src="/_resources/44ccfbc499544d8c88faad4221f2ad78.png" /></p>
+<p>This tells us that there is an ftp server with anonymous access.</p>
+<p>The site on port 80 is a login portal for a network monitor:<br />
+<img src="/_resources/66027e456eaf4938bf5998156d3a54d0.png" /></p>
+<p>It appears that the contents of the ftp directory are web server files. We can login and see if we can find some credentials.</p>
+<p>We login to the ftp server and are able to download the user.txt file:<br />
+<img src="/_resources/0df1cfc48a504b048a9292050ded3d61.png" /></p>
+<p>We look around a find some log files under the inetpub directory. We see a username:<br />
+<img src="/_resources/b9b588fc1c6547b1a39c4a2569300023.png" /></p>
+<p>We can also see that this software is running version 18.1.37:<br />
+<img src="/_resources/c871af13ad274266aa399ab2fff86157.png" /></p>
+<p>Apparently the PRTG config files are stored at this location:<br />
+%programdata%\Paessler\PRTG Network Monitor</p>
+<p>We navigate to this location via ftp and download the backup config file:<br />
+<img src="/_resources/94dccae33bb24c939bed80c02c6b3a2b.png" /></p>
+<p>We search for username or password and find a username:<br />
+<img src="/_resources/9c3d2ae0b2af484e960160821c15c62a.png" /><br />
+Then searching the document we find a password:<br />
+<img src="/_resources/f9c79ad157b6458bb1ef7cf68df72d48.png" /><br />
+prtgadmin:PrTg@dmin2018<br />
+We change the 2018 to 2019 and we are able to login:<br />
+<img src="/_resources/f9a15a5808db4196a531792f13d23ded.png" /><br />
+We find an exploit for Authenticated RCE:<br />
+<a title="https://www.exploit-db.com/exploits/46527" href="https://www.exploit-db.com/exploits/46527">https://www.exploit-db.com/exploits/46527</a></p>
+<p>We run the exploit with the cookies from our login and the script creates a user named pentest with password P3nT3st!<br />
+./46527.sh -u <a title="http://10.10.10.152" href="http://10.10.10.152">http://10.10.10.152</a> -c "_ga=GA1.4.769301708.1678482064; _gid=GA1.4.941712534.1678482064; OCTOPUS1813713946=e0U4QTQyMjZGLTk2QzMtNEE4RC1BQkMyLTJCQTRBQkMwQThCRH0%3D"<br />
+<img src="/_resources/a08faf6af23c43d9b7932d0f73020f93.png" /></p>
+<p>Next we run impacket-psexec and get a shell:<br />
+impacket-psexec pentest:P3nT3st!@10.10.10.152<br />
+We get the root.txt:<br />
+<img src="/_resources/d8ab4c27c25b40938b15084ad705b90b.png" /></p>
+</div>
+      </article>
+    </div>
+  </body>
+</html>

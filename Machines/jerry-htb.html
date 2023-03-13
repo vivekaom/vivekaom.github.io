@@ -1,0 +1,58 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+<link rel="stylesheet" href="/_assets/main.css" />
+
+    <title>Jerry HTB - HTB Writeups</title>
+  </head>
+  <body>
+    <div class="main">
+      <nav class="navigation">
+        <a href="/">HTB Writeups</a>
+      </nav>
+      <article>
+        <header>
+          <h1 class="article-title">Jerry HTB</h1>
+          <div class="article-info">
+            <div>
+              <span
+                >Created At：<time datetime="1678295737154"
+                  >2023-03-08 12:15</time
+                ></span
+              >
+              <span
+                >Updated At：<time datetime="1678309967415"
+                  >2023-03-08 16:12</time
+                ></span
+              >
+            </div>
+            
+          </div>
+        </header>
+        <div class="article-content markdown-body"><p>We strart with nmap:<br />
+nmap -Pn -sC -sV -oA nmap/initial 10.10.10.95<br />
+<img src="/_resources/a51ca88c13bd480a846daad730643871.png" /></p>
+<p>We see port 8080 is open and is a web server<br />
+There is a manager application on this tomcat server we can log into:<br />
+<img src="/_resources/ff7800ce0757433595943383181a1d66.png" /><br />
+I failed login attempts and blacklisted our ip:<br />
+womp womp.</p>
+<p>We can see that there is an RCE exploit for this version of Tomcat:<br />
+<a title="https://www.exploit-db.com/exploits/42953" href="https://www.exploit-db.com/exploits/42953">https://www.exploit-db.com/exploits/42953</a></p>
+<p>We are unable to login through the browser for some reason, but there is a metasploit module for this exploit:<br />
+exploit(multi/http/tomcat_mgr_upload</p>
+<p>We verify we have the correct credentials using another msf module:<br />
+auxiliary(scanner/http/tomcat_mgr_login</p>
+<p><img src="/_resources/43a09f4e6a724d17baba54c99954b567.png" /><br />
+We run the metasploit module:<br />
+<img src="/_resources/82f7de5a404f41c1a9b3b51b094db342.png" /></p>
+<p>Then we get the flags:<br />
+<img src="/_resources/24d8ee77cd8942cabf6ece2547591f9d.png" /></p>
+</div>
+      </article>
+    </div>
+  </body>
+</html>

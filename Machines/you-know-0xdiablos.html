@@ -1,0 +1,104 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+<link rel="stylesheet" href="/_assets/main.css" />
+
+    <title>You Know 0xDiablos - HTB Writeups</title>
+  </head>
+  <body>
+    <div class="main">
+      <nav class="navigation">
+        <a href="/">HTB Writeups</a>
+      </nav>
+      <article>
+        <header>
+          <h1 class="article-title">You Know 0xDiablos</h1>
+          <div class="article-info">
+            <div>
+              <span
+                >Created At：<time datetime="1678310287786"
+                  >2023-03-08 16:18</time
+                ></span
+              >
+              <span
+                >Updated At：<time datetime="1678315398331"
+                  >2023-03-08 17:43</time
+                ></span
+              >
+            </div>
+            
+          </div>
+        </header>
+        <div class="article-content markdown-body"><p>We download the file and unzip using 7z x</p>
+<p><img src="/_resources/c167acf659a1479eba399fc6216da8ad.png" /></p>
+<p>We run file against the vuln file and see that it is a 32bit ELF:<br />
+<img src="/_resources/b5ef8cd44584495a898899260062bd11.png" /><br />
+We spawn the machine to see what we need to do and we see this ip address.</p>
+<p>142.93.45.159:31277</p>
+<p>We run an nmap scan to see if we can learn anything:<br />
+nmap -Pn -sC -sV -p 31277 -oA initial 142.93.45.159<br />
+This is unusual output:<br />
+<img src="/_resources/3990db98bb3545dab559cf9115645718.png" /></p>
+<p>I assume this a BOF challenge.</p>
+<p>Since it's our first day, and we don't know what to do we follow someone's writeup:<br />
+<a title="https://shakuganz.com/2021/06/08/hackthebox-you-know-0xdiablos-write-up/" href="https://shakuganz.com/2021/06/08/hackthebox-you-know-0xdiablos-write-up/">https://shakuganz.com/2021/06/08/hackthebox-you-know-0xdiablos-write-up/</a></p>
+<p>We use ghidra to analyze the binary:<br />
+<img src="/_resources/4026937b606e429fb427f68865d81f0e.png" /></p>
+<p>We find the vuln() call in the binary:<br />
+<img src="/_resources/79f9e31bd8314a5ea964cedb1689bcd9.png" /></p>
+<p>We use the security checker script here to view the security methods of the vuln binary:<br />
+<a title="https://github.com/slimm609/checksec.sh" href="https://github.com/slimm609/checksec.sh">https://github.com/slimm609/checksec.sh</a><br />
+<img src="/_resources/73501fdb93954dff92e47dc39f3d15b8.png" /></p>
+<p>Then we run the python command to overflow the buffer with A's as a check:<br />
+python3 -c "print('A'* 200)" | ./vuln<br />
+<img src="/_resources/7678972c5bb54b8a8b0a30db07f56ed5.png" /></p>
+<p>Using gdb we can run the file and then get info about what happens when it runs:<br />
+We run with the command:<br />
+gdb ./vuln<br />
+then enter r<br />
+we use ctrl+c to end the run and the type info file to see the ouput<br />
+<img src="/_resources/d9798bdb5ba94b4a8a32aceaf93a2255.png" /></p>
+<p>We can see that the entry point is<br />
+Entry point: 0x80490d0</p>
+<p>We can see that this function is where the program starts:<br />
+<img src="/_resources/c638d16607bd41fdb53819baa93af2f8.png" /></p>
+<p>We would need to set break points before and after the get() function within the vuln() function to make sure that we can control the overlow:<br />
+<img src="/_resources/830dc8ae0e12409c90fbd89af7738074.png" /></p>
+<p>We set breakpoints in gdb by using b * point<br />
+b *0x08049291<br />
+b *0x08049296<br />
+<img src="/_resources/6e2be14388da4f74a6deb6aa6fb2e53e.png" /></p>
+<p>According to the walkthrough we<br />
+When we analyze the stack using the command “x/60x $esp” we can see the return address of vuln() located at 0xffffd0cc on the stack<br />
+<img src="/_resources/129b1de54dc94bf1894a73a100c6d242.png" /></p>
+<p>The return address can be proven by comparing it with the next instruction in main() after calling vuln() as shown:<br />
+<img src="/_resources/0ba7262143f84855bc19bc8da8f40b0c.png" /></p>
+<p>Just as in the walkthrough we unput 184 A's and find that we need 4 more A's to reach the main function:<br />
+<img src="/_resources/e8774c47d90145faab960cce20d077e5.png" /></p>
+<p>Previously noting the flag() function which prints out the flag, a buffer overflow script can be written according to what's found in the walkthrough.<br />
+<img src="/_resources/ed4a55feb2154322ad700426cd51f819.png" /></p>
+<p>We run the testexploit.py file we created and get a message:<br />
+<img src="/_resources/51079504c4a5466b979131d99f5974b5.png" /></p>
+<p>When looking at the flag() function in the binary, we see that two paramters are needed:<br />
+<img src="/_resources/0af67f31bf824689bbf599ea36083d76.png" /><br />
+The binary specifies what the values should be in the paramters:<br />
+<img src="/_resources/ffc1deb6fa2340b6a2b995f637b92b13.png" /></p>
+<p>0xdeadbeef<br />
+0xc0ded00d</p>
+<p>We need to modify the exploit to pass those parameters:<br />
+<img src="/_resources/a81972aff8534039b9c3b5868a81628e.png" /></p>
+<p>We create a flag.txt file and test it:<br />
+<img src="/_resources/1ee4ac766dd641fba0d77d0a73d3a354.png" /></p>
+<p>Now we modify the exploit for interacting with server:<br />
+<img src="/_resources/61a98a6e74b249e79cd00467f2c651be.png" /></p>
+<p>We got the flag:<br />
+<img src="/_resources/11edad27330b4b8ab613d32d6ed462c1.png" /><br />
+HTB{0ur_Buff3r_1s_not_healthy}</p>
+</div>
+      </article>
+    </div>
+  </body>
+</html>

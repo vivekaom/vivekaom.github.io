@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta http-equiv="X-UA-Compatible" content="ie=edge" />
+<link rel="stylesheet" href="/_assets/main.css" />
+
+    <title>Blue Challenge HTB - HTB Writeups</title>
+  </head>
+  <body>
+    <div class="main">
+      <nav class="navigation">
+        <a href="/">HTB Writeups</a>
+      </nav>
+      <article>
+        <header>
+          <h1 class="article-title">Blue Challenge HTB</h1>
+          <div class="article-info">
+            <div>
+              <span
+                >Created At：<time datetime="1678501606332"
+                  >2023-03-10 21:26</time
+                ></span
+              >
+              <span
+                >Updated At：<time datetime="1678504158595"
+                  >2023-03-10 22:09</time
+                ></span
+              >
+            </div>
+            
+          </div>
+        </header>
+        <div class="article-content markdown-body"><p>We start with an nmap scan:<br />
+nmap -Pn -sC -sV -oA nmap/initial 10.10.10.40<br />
+<img src="/_resources/c2d6bc2c7fa64382b29c23824f8f67b8.png" /></p>
+<p>We can see that this machine is running Windows 7 Pro 7601 Service Pack 1 which is vulnerable to Eternal Blue:<br />
+<a title="https://www.exploit-db.com/exploits/42315" href="https://www.exploit-db.com/exploits/42315">https://www.exploit-db.com/exploits/42315</a></p>
+<p>We attempted several non-metasploit methods, but all failed.</p>
+<p>We try with metasploit.<br />
+We succeed:<br />
+<img src="/_resources/80f3dbf489874648990542dc1292f796.png" /><br />
+We get the root.txt:<br />
+<img src="/_resources/bc74d5bbbe7b4eb68b646e09b87fda8d.png" /><br />
+1578f84c0aeb6640e8c6e3971e7b04ae</p>
+<p>We get the user.txt:<br />
+<img src="/_resources/ea2c68f4c1664f09a72f1afc237c8dae.png" /><br />
+d0579736afe9a008cc472be7f89bfaa6</p>
+</div>
+      </article>
+    </div>
+  </body>
+</html>
